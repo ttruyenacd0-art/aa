@@ -582,7 +582,7 @@ def bank_history():
 
 # ─── PRICING PACKAGES MANAGEMENT ──────────────────────────────────────────────
 
-MAX_PACKAGES = 3
+MAX_PACKAGES = 10
 
 
 @bp.route("/api/packages", methods=["GET"])

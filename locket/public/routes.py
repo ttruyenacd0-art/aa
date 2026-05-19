@@ -478,17 +478,30 @@ def _confirm_payment_and_save(conn, payment_id, username, tx_id, now):
         "UPDATE payments SET status='confirmed', confirmed_at=?, transaction_id=? WHERE payment_id=?",
         (now, tx_id, payment_id)
     )
+    # Lấy package_id từ payment record
+    payment_row = conn.execute(
+        "SELECT package_id FROM payments WHERE payment_id=?", (payment_id,)
+    ).fetchone()
+    pkg_id = payment_row["package_id"] if payment_row else None
+
     user_id = session.get("user_id")
     account_user = session.get("user_name")
     if user_id:
+        # Nếu user nâng cấp gói mới → xóa gói cũ trong gold_purchases (chỉ giữ gói mới nhất)
+        if pkg_id:
+            # Xóa các bản ghi gold_purchases cũ có package_id khác (gói cũ)
+            conn.execute(
+                "DELETE FROM gold_purchases WHERE user_id=? AND package_id IS NOT NULL AND package_id!=?",
+                (user_id, pkg_id)
+            )
         dup = conn.execute(
             "SELECT 1 FROM gold_purchases WHERE user_id=? AND locket_username=? AND payment_id=?",
             (user_id, username, payment_id)
         ).fetchone()
         if not dup:
             conn.execute(
-                "INSERT INTO gold_purchases (user_id, locket_username, payment_id, purchased_at) VALUES (?,?,?,?)",
-                (user_id, username, payment_id, now)
+                "INSERT INTO gold_purchases (user_id, locket_username, payment_id, package_id, purchased_at) VALUES (?,?,?,?,?)",
+                (user_id, username, payment_id, pkg_id, now)
             )
     # Gửi thông báo Telegram
     cfg = _get_payment_cfg()
@@ -800,14 +813,21 @@ def _link_pending_payments_to_user(conn, user_id: int, payment_ids: list):
         ).fetchone()
         if not row:
             continue
+        pkg_id = _row_get(row, "package_id")
         dup = conn.execute(
             "SELECT 1 FROM gold_purchases WHERE user_id=? AND payment_id=?",
             (user_id, pid)
         ).fetchone()
         if not dup:
+            # Nếu có package_id mới → xóa gói cũ
+            if pkg_id:
+                conn.execute(
+                    "DELETE FROM gold_purchases WHERE user_id=? AND package_id IS NOT NULL AND package_id!=?",
+                    (user_id, pkg_id)
+                )
             conn.execute(
-                "INSERT INTO gold_purchases (user_id, locket_username, payment_id, purchased_at) VALUES (?,?,?,?)",
-                (user_id, row["username"], pid, now)
+                "INSERT INTO gold_purchases (user_id, locket_username, payment_id, package_id, purchased_at) VALUES (?,?,?,?,?)",
+                (user_id, row["username"], pid, pkg_id, now)
             )
             linked += 1
     return linked
@@ -893,13 +913,13 @@ def user_package():
 
     conn = db.get_conn()
 
-    # Find user's latest gold_purchase that has a package_id
+    # Tìm gói mới nhất mà user đã mua (từ gold_purchases có package_id)
     purchase = conn.execute(
         "SELECT package_id FROM gold_purchases WHERE user_id=? AND package_id IS NOT NULL ORDER BY purchased_at DESC LIMIT 1",
         (user_id,)
     ).fetchone()
 
-    # Also check gold_activations
+    # Cũng kiểm tra gold_activations
     activation = conn.execute(
         "SELECT package_id FROM gold_activations WHERE user_id=? ORDER BY activated_at DESC LIMIT 1",
         (user_id,)
@@ -908,25 +928,15 @@ def user_package():
     pkg_id = None
     if purchase:
         pkg_id = purchase["package_id"]
-    elif activation:
-        pkg_id = activation["package_id"]
+    if activation:
+        # Nếu activation mới hơn purchase thì ưu tiên activation
+        # Nhưng thực tế ta dùng package_id từ purchase (vì đó là gói đã thanh toán)
+        if not pkg_id:
+            pkg_id = activation["package_id"]
 
+    # Nếu không tìm thấy package_id nào → user chưa mua gói
     if not pkg_id:
-        # Check if user has any confirmed payment -> assign first available package
-        confirmed = conn.execute(
-            "SELECT payment_id FROM payments WHERE username IN (SELECT username FROM user_accounts WHERE id=?) AND status='confirmed' ORDER BY confirmed_at DESC LIMIT 1",
-            (user_id,)
-        ).fetchone()
-        if not confirmed:
-            return jsonify({"success": True, "package": None, "activations_used": 0})
-        # Assign the first enabled package
-        first_pkg = conn.execute(
-            "SELECT id FROM pricing_packages WHERE enabled=1 ORDER BY sort_order ASC LIMIT 1"
-        ).fetchone()
-        if first_pkg:
-            pkg_id = first_pkg["id"]
-        else:
-            return jsonify({"success": True, "package": None, "activations_used": 0})
+        return jsonify({"success": True, "package": None, "activations_used": 0})
 
     pkg = conn.execute(
         "SELECT * FROM pricing_packages WHERE id=?", (pkg_id,)
@@ -968,7 +978,7 @@ def gold_activate():
 
     conn = db.get_conn()
 
-    # Get user's package
+    # Get user's current package (chỉ từ gold_purchases có package_id)
     purchase = conn.execute(
         "SELECT package_id FROM gold_purchases WHERE user_id=? AND package_id IS NOT NULL ORDER BY purchased_at DESC LIMIT 1",
         (user_id,)
@@ -985,22 +995,7 @@ def gold_activate():
         pkg_id = activation_rec["package_id"]
 
     if not pkg_id:
-        # Try to find from confirmed payments
-        user_row = conn.execute("SELECT username FROM user_accounts WHERE id=?", (user_id,)).fetchone()
-        if user_row:
-            confirmed = conn.execute(
-                "SELECT payment_id FROM payments WHERE username=? AND status='confirmed' ORDER BY confirmed_at DESC LIMIT 1",
-                (user_row["username"],)
-            ).fetchone()
-            if confirmed:
-                first_pkg = conn.execute(
-                    "SELECT id FROM pricing_packages WHERE enabled=1 ORDER BY sort_order ASC LIMIT 1"
-                ).fetchone()
-                if first_pkg:
-                    pkg_id = first_pkg["id"]
-
-    if not pkg_id:
-        return jsonify({"success": False, "msg": "Ban chua mua goi nao. Vui long mua goi truoc."}), 403
+        return jsonify({"success": False, "msg": "Bạn chưa mua gói nào. Vui lòng mua gói trước."}), 403
 
     pkg = conn.execute("SELECT * FROM pricing_packages WHERE id=?", (pkg_id,)).fetchone()
     if not pkg:
