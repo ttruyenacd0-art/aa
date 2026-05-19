@@ -698,3 +698,87 @@ def contact_bubble_set():
     body = request.get_json(silent=True) or {}
     saved = site_settings.set_contact_bubble(body)
     return jsonify({"success": True, "contact_bubble": saved})
+
+
+# ─── COUPONS (Mã giảm giá) ───────────────────────────────────────────────────
+
+@bp.route("/api/coupons", methods=["GET"])
+@admin_required
+def coupons_list():
+    conn = db.get_conn()
+    rows = conn.execute("SELECT * FROM coupons ORDER BY created_at DESC").fetchall()
+    items = [
+        {
+            "id": r["id"],
+            "code": r["code"],
+            "discount_percent": r["discount_percent"],
+            "max_uses": r["max_uses"],
+            "used_count": r["used_count"],
+            "enabled": bool(r["enabled"]),
+            "created_at": r["created_at"],
+        }
+        for r in rows
+    ]
+    return jsonify({"success": True, "coupons": items})
+
+
+@bp.route("/api/coupons", methods=["POST"])
+@admin_required
+def coupons_add():
+    body = request.get_json(silent=True) or {}
+    code = (body.get("code") or "").strip().upper().replace(" ", "")
+    discount_percent = body.get("discount_percent", 0)
+    max_uses = body.get("max_uses")
+
+    if not code:
+        return jsonify({"success": False, "error": "Mã giảm giá là bắt buộc"}), 400
+    try:
+        discount_percent = int(discount_percent)
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "error": "Phần trăm giảm giá không hợp lệ"}), 400
+    if discount_percent < 1 or discount_percent > 100:
+        return jsonify({"success": False, "error": "Phần trăm phải từ 1-100"}), 400
+
+    if max_uses is not None and max_uses != "":
+        try:
+            max_uses = int(max_uses)
+        except (ValueError, TypeError):
+            max_uses = None
+    else:
+        max_uses = None
+
+    conn = db.get_conn()
+    existing = conn.execute("SELECT 1 FROM coupons WHERE code=?", (code,)).fetchone()
+    if existing:
+        return jsonify({"success": False, "error": f"Mã '{code}' đã tồn tại"}), 409
+
+    conn.execute(
+        "INSERT INTO coupons (code, discount_percent, max_uses, used_count, enabled, created_at) VALUES (?,?,?,0,1,?)",
+        (code, discount_percent, max_uses, time.time())
+    )
+    return jsonify({"success": True})
+
+
+@bp.route("/api/coupons/<int:coupon_id>", methods=["PUT"])
+@admin_required
+def coupons_update(coupon_id):
+    body = request.get_json(silent=True) or {}
+    conn = db.get_conn()
+    row = conn.execute("SELECT * FROM coupons WHERE id=?", (coupon_id,)).fetchone()
+    if not row:
+        return jsonify({"success": False, "error": "Không tìm thấy mã"}), 404
+
+    enabled = body.get("enabled", row["enabled"])
+    conn.execute(
+        "UPDATE coupons SET enabled=? WHERE id=?",
+        (1 if enabled else 0, coupon_id)
+    )
+    return jsonify({"success": True})
+
+
+@bp.route("/api/coupons/<int:coupon_id>", methods=["DELETE"])
+@admin_required
+def coupons_delete(coupon_id):
+    conn = db.get_conn()
+    conn.execute("DELETE FROM coupons WHERE id=?", (coupon_id,))
+    return jsonify({"success": True})

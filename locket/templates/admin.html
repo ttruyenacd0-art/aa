@@ -585,6 +585,10 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 Telegram
             </button>
+            <button class="tab-btn" data-tab="coupons">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+                Mã giảm giá
+            </button>
         </nav>
 
         <div class="tab-pane" data-pane="accounts">
@@ -908,6 +912,43 @@
                         </button>
                     </div>
                     <p id="tg_msg" style="font-size:.82rem;margin:0;min-height:18px"></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane" data-pane="coupons">
+            <div class="card">
+                <h2>
+                    <span style="display:flex;align-items:center;gap:8px;">
+                        <svg class="section-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+                        Quản lý mã giảm giá
+                    </span>
+                    <span class="pill" id="coupon-count">...</span>
+                </h2>
+                <p style="font-size:.82rem;color:#888;margin:4px 0 12px">Tạo mã giảm giá để người dùng nhập khi thanh toán. VD: mã SALE10 giảm 10%.</p>
+                <table id="coupon-table">
+                    <thead><tr><th>Mã</th><th>Giảm (%)</th><th>Đã dùng</th><th>Giới hạn</th><th>Trạng thái</th><th></th></tr></thead>
+                    <tbody></tbody>
+                </table>
+                <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06)">
+                    <h3 style="font-size:.9em;margin-bottom:10px;color:var(--gold-light)">Thêm mã giảm giá</h3>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+                        <div>
+                            <div style="font-size:.72em;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin-bottom:4px">Mã giảm giá</div>
+                            <input id="coupon-code" type="text" placeholder="VD: SALE10" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,215,0,.15);background:rgba(255,255,255,.03);color:#fff;font-size:.9rem;text-transform:uppercase">
+                        </div>
+                        <div>
+                            <div style="font-size:.72em;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin-bottom:4px">% Giảm giá</div>
+                            <input id="coupon-percent" type="number" min="1" max="100" value="10" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,215,0,.15);background:rgba(255,255,255,.03);color:#fff;font-size:.9rem">
+                        </div>
+                        <div>
+                            <div style="font-size:.72em;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin-bottom:4px">Giới hạn lượt (trống = vô hạn)</div>
+                            <input id="coupon-max" type="number" min="1" placeholder="Không giới hạn" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,215,0,.15);background:rgba(255,255,255,.03);color:#fff;font-size:.9rem">
+                        </div>
+                    </div>
+                    <button onclick="addCoupon()" style="margin-top:10px;padding:10px 20px;background:linear-gradient(135deg,#ffd700,#ffaa00);color:#000;font-weight:700;border:none;border-radius:10px;cursor:pointer;font-size:.9rem">
+                        Thêm mã
+                    </button>
                 </div>
             </div>
         </div>
@@ -1888,6 +1929,82 @@
         }
 
         loadTelegramSettings();
+
+        // ── COUPONS (Mã giảm giá) ────────────────────────────────────────
+        async function loadCoupons() {
+            try {
+                const data = await api('GET', '/admin/api/coupons');
+                const items = data.coupons || [];
+                document.getElementById('coupon-count').textContent = items.length + ' mã';
+                const tbody = document.querySelector('#coupon-table tbody');
+                tbody.innerHTML = '';
+                if (!items.length) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty">Chưa có mã giảm giá nào</td></tr>';
+                    return;
+                }
+                items.forEach(c => {
+                    const tr = document.createElement('tr');
+                    const maxLabel = c.max_uses != null ? c.max_uses : '∞';
+                    tr.innerHTML = `
+                        <td class="mono" style="font-weight:600;color:var(--gold)">${c.code}</td>
+                        <td style="font-weight:600">${c.discount_percent}%</td>
+                        <td>${c.used_count}</td>
+                        <td>${maxLabel}</td>
+                        <td>
+                            <label class="switch" style="gap:6px;">
+                                <input type="checkbox" data-coupon-toggle="${c.id}" ${c.enabled ? 'checked' : ''}>
+                                <span class="track"></span>
+                                <span style="font-size:.78em;">${c.enabled ? 'Bật' : 'Tắt'}</span>
+                            </label>
+                        </td>
+                        <td style="text-align:right">
+                            <button class="icon danger" data-coupon-del="${c.id}">${svgTrash}</button>
+                        </td>`;
+                    tbody.appendChild(tr);
+                });
+                tbody.querySelectorAll('input[data-coupon-toggle]').forEach(inp => {
+                    inp.onchange = async () => {
+                        try {
+                            await api('PUT', `/admin/api/coupons/${inp.dataset.couponToggle}`, { enabled: inp.checked });
+                            await loadCoupons();
+                        } catch(e) { Swal.fire({...swalGlass, icon:'error', title:'Lỗi', text:e.message}); }
+                    };
+                });
+                tbody.querySelectorAll('button[data-coupon-del]').forEach(btn => {
+                    btn.onclick = async () => {
+                        const ok = await Swal.fire({...swalGlass, icon:'warning', title:'Xoá mã này?', showCancelButton:true, confirmButtonText:'Xoá'});
+                        if (!ok.isConfirmed) return;
+                        try {
+                            await api('DELETE', `/admin/api/coupons/${btn.dataset.couponDel}`);
+                            await loadCoupons();
+                        } catch(e) { Swal.fire({...swalGlass, icon:'error', title:'Lỗi', text:e.message}); }
+                    };
+                });
+            } catch(e) { console.error(e); }
+        }
+
+        async function addCoupon() {
+            const code = document.getElementById('coupon-code').value.trim();
+            const discount_percent = parseInt(document.getElementById('coupon-percent').value) || 10;
+            const maxVal = document.getElementById('coupon-max').value.trim();
+            const max_uses = maxVal ? parseInt(maxVal) : null;
+            if (!code) {
+                Swal.fire({...swalGlass, icon:'warning', title:'Thiếu thông tin', text:'Vui lòng nhập mã giảm giá'});
+                return;
+            }
+            try {
+                await api('POST', '/admin/api/coupons', { code, discount_percent, max_uses });
+                document.getElementById('coupon-code').value = '';
+                document.getElementById('coupon-percent').value = '10';
+                document.getElementById('coupon-max').value = '';
+                await loadCoupons();
+                Swal.fire({...swalGlass, icon:'success', title:'Đã thêm mã!', timer:1300, showConfirmButton:false});
+            } catch(e) {
+                Swal.fire({...swalGlass, icon:'error', title:'Không thể thêm', text:e.message});
+            }
+        }
+
+        loadCoupons();
     </script>
 
     <!-- ═══ PRICING PACKAGES MANAGEMENT ═══ -->

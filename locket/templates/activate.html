@@ -150,7 +150,29 @@
                         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
                         <h3>Chưa mua gói</h3>
                         <p>Bạn cần mua gói để sử dụng tính năng kích hoạt Gold.</p>
-                        <a href="/pricing">Xem bảng giá &rarr;</a>
+                        <button class="btn btn-gold" style="margin-top:12px" onclick="showBuyPackage()">Mua gói ngay</button>
+                        <a href="/pricing" style="display:block;margin-top:8px;color:#9ca3af;font-size:.85rem">Xem bảng giá &rarr;</a>
+                    </div>
+
+                    <!-- Buy Package Flow -->
+                    <div id="buyPackageSection" style="display:none">
+                        <h3 style="font-size:1rem;font-weight:700;color:#fbbf24;margin-bottom:12px">Chọn gói & Thanh toán</h3>
+                        <div id="buyPkgList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
+                        <div style="margin-bottom:12px">
+                            <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#9ca3af;margin-bottom:6px;display:block">Mã giảm giá (nếu có)</label>
+                            <div style="display:flex;gap:8px">
+                                <input id="buyCouponCode" type="text" placeholder="VD: SALE10" style="flex:1;padding:10px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;font-size:.9rem;text-transform:uppercase">
+                                <button onclick="applyCoupon()" style="padding:10px 16px;border-radius:10px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#fbbf24;font-weight:600;font-size:.85rem;cursor:pointer">Áp dụng</button>
+                            </div>
+                            <div id="couponMsg" style="font-size:.8rem;margin-top:6px;min-height:18px"></div>
+                        </div>
+                        <div id="buyPriceSummary" style="padding:12px 16px;background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.15);border-radius:12px;margin-bottom:16px;display:none">
+                            <div style="display:flex;justify-content:space-between;font-size:.9rem"><span style="color:#9ca3af">Giá gốc</span><span id="buyOrigPrice">-</span></div>
+                            <div id="buyDiscountRow" style="display:none;justify-content:space-between;font-size:.9rem;margin-top:4px"><span style="color:#4ade80">Giảm giá</span><span id="buyDiscount" style="color:#4ade80">-</span></div>
+                            <div style="display:flex;justify-content:space-between;font-size:1.1rem;font-weight:700;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.1)"><span>Tổng thanh toán</span><span id="buyFinalPrice" style="color:#fbbf24">-</span></div>
+                        </div>
+                        <button id="buyPayBtn" onclick="doBuyPackage()" class="btn btn-gold" style="width:100%" disabled>Thanh toán</button>
+                        <div id="buyPayMsg" class="msg" style="margin-top:8px"></div>
                     </div>
                     <div id="activateForm" style="display:none">
                         <div class="auth-form">
@@ -250,16 +272,19 @@
             if(activationsUsed<maxActivations){
                 document.getElementById('activateForm').style.display='';
                 document.getElementById('activateLocked').style.display='none';
+                document.getElementById('buyPackageSection').style.display='none';
             } else {
                 document.getElementById('activateForm').style.display='none';
                 document.getElementById('activateLocked').style.display='';
                 document.querySelector('#activateLocked h3').textContent='Hết lượt kích hoạt';
-                document.querySelector('#activateLocked p').textContent='Bạn đã sử dụng hết lượt kích hoạt của gói này.';
+                document.querySelector('#activateLocked p').textContent='Bạn đã sử dụng hết lượt kích hoạt của gói này. Mua thêm gói mới để tiếp tục.';
+                document.getElementById('buyPackageSection').style.display='none';
             }
         } else {
             document.getElementById('packageInfo').style.display='none';
             document.getElementById('activateForm').style.display='none';
             document.getElementById('activateLocked').style.display='';
+            document.getElementById('buyPackageSection').style.display='none';
         }
     }
 
@@ -301,6 +326,158 @@
         const d=await r.json();
         if(d.success){alert('Đã gửi yêu cầu kích hoạt lại thành công!');}
         else{alert(d.msg||'Thất bại');}
+    }
+
+    // ── BUY PACKAGE WITH COUPON ──────────────────────────────────────────
+    let selectedPkgId = null;
+    let selectedPkgPrice = 0;
+    let appliedDiscount = 0;
+    let appliedCouponCode = '';
+
+    function showBuyPackage(){
+        document.getElementById('activateLocked').style.display='none';
+        document.getElementById('buyPackageSection').style.display='';
+        loadBuyPackages();
+    }
+
+    async function loadBuyPackages(){
+        const r=await fetch('/api/packages');
+        const d=await r.json();
+        const list=document.getElementById('buyPkgList');
+        if(!d.success||!d.packages.length){list.innerHTML='<p style="color:#6b7280">Chưa có gói nào.</p>';return;}
+        list.innerHTML=d.packages.map(pkg=>{
+            const features=JSON.parse(pkg.features||'[]');
+            return `<div class="buy-pkg-item" data-id="${pkg.id}" data-price="${pkg.price}" onclick="selectPkg(this,${pkg.id},${pkg.price})" style="padding:14px 16px;border:1px solid rgba(255,255,255,.1);border-radius:14px;cursor:pointer;transition:all .3s">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <div>
+                        <div style="font-weight:700;font-size:1rem">${pkg.name}</div>
+                        <div style="color:#6b7280;font-size:.8rem">${pkg.description} · ${pkg.duration}</div>
+                    </div>
+                    <div style="font-weight:800;font-size:1.1rem;color:#fbbf24">${formatVND(pkg.price)}</div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function formatVND(n){return new Intl.NumberFormat('vi-VN').format(n)+' đ';}
+
+    function selectPkg(el,id,price){
+        document.querySelectorAll('.buy-pkg-item').forEach(e=>{e.style.borderColor='rgba(255,255,255,.1)';e.style.background='transparent';});
+        el.style.borderColor='#f59e0b';el.style.background='rgba(245,158,11,.05)';
+        selectedPkgId=id;selectedPkgPrice=price;
+        appliedDiscount=0;appliedCouponCode='';
+        document.getElementById('couponMsg').textContent='';
+        updatePriceSummary();
+        document.getElementById('buyPayBtn').disabled=false;
+    }
+
+    function updatePriceSummary(){
+        document.getElementById('buyPriceSummary').style.display='';
+        document.getElementById('buyOrigPrice').textContent=formatVND(selectedPkgPrice);
+        const discountAmt=Math.floor(selectedPkgPrice*appliedDiscount/100);
+        if(appliedDiscount>0){
+            document.getElementById('buyDiscountRow').style.display='flex';
+            document.getElementById('buyDiscount').textContent='-'+formatVND(discountAmt)+' ('+appliedDiscount+'%)';
+        } else {
+            document.getElementById('buyDiscountRow').style.display='none';
+        }
+        document.getElementById('buyFinalPrice').textContent=formatVND(selectedPkgPrice-discountAmt);
+    }
+
+    async function applyCoupon(){
+        const code=document.getElementById('buyCouponCode').value.trim();
+        const msg=document.getElementById('couponMsg');
+        if(!code){msg.style.color='#fca5a5';msg.textContent='Vui lòng nhập mã';return;}
+        try{
+            const r=await fetch('/api/coupon/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
+            const d=await r.json();
+            if(d.success){
+                appliedDiscount=d.discount_percent;
+                appliedCouponCode=d.code;
+                msg.style.color='#86efac';msg.textContent=`Áp dụng thành công! Giảm ${d.discount_percent}%`;
+                if(selectedPkgId) updatePriceSummary();
+            } else {
+                appliedDiscount=0;appliedCouponCode='';
+                msg.style.color='#fca5a5';msg.textContent=d.msg||'Mã không hợp lệ';
+                if(selectedPkgId) updatePriceSummary();
+            }
+        }catch(e){msg.style.color='#fca5a5';msg.textContent='Lỗi kết nối';}
+    }
+
+    async function doBuyPackage(){
+        if(!selectedPkgId){return;}
+        const btn=document.getElementById('buyPayBtn');
+        btn.disabled=true;btn.textContent='Đang tạo thanh toán...';
+        const user=await fetch('/api/auth/me').then(r=>r.json());
+        if(!user.logged_in){showMsg('buyPayMsg','Vui lòng đăng nhập','error');btn.disabled=false;btn.textContent='Thanh toán';return;}
+        try{
+            const r=await fetch('/api/payment/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+                username:user.username,
+                package_id:selectedPkgId,
+                coupon_code:appliedCouponCode
+            })});
+            const d=await r.json();
+            if(!d.success){showMsg('buyPayMsg',d.msg||'Lỗi','error');btn.disabled=false;btn.textContent='Thanh toán';return;}
+            showPaymentQR(d);
+        }catch(e){showMsg('buyPayMsg','Lỗi kết nối','error');btn.disabled=false;btn.textContent='Thanh toán';}
+    }
+
+    function showPaymentQR(data){
+        const {payment_id,amount,bank_account,bank_name,account_name,description,expire_at}=data;
+        const qrUrl=`https://img.vietqr.io/image/${bank_name}-${bank_account}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(account_name)}`;
+        document.getElementById('buyPackageSection').innerHTML=`
+            <div style="text-align:center">
+                <h3 style="color:#fbbf24;margin-bottom:12px">Thanh toán chuyển khoản</h3>
+                <img src="${qrUrl}" style="width:200px;height:200px;border-radius:12px;margin-bottom:12px" onerror="this.style.display='none'">
+                <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:14px;text-align:left;font-size:.9rem;margin-bottom:12px">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:#9ca3af">Ngân hàng</span><strong>${bank_name}</strong></div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:#9ca3af">Số tài khoản</span><strong>${bank_account}</strong></div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:#9ca3af">Chủ TK</span><strong>${account_name}</strong></div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:#9ca3af">Số tiền</span><strong style="color:#fbbf24">${formatVND(amount)}</strong></div>
+                    <div style="display:flex;justify-content:space-between"><span style="color:#9ca3af">Nội dung CK</span><strong style="color:#fbbf24">${description}</strong></div>
+                </div>
+                <p style="font-size:.82rem;color:#9ca3af;margin-bottom:8px">Nhập <strong style="color:#fff">đúng nội dung</strong> khi chuyển khoản</p>
+                <div id="payStatus" style="color:#9ca3af;font-size:.9rem;margin-bottom:4px">Đang chờ thanh toán...</div>
+                <div id="payTimer" style="color:#fbbf24;font-weight:600;font-size:1rem;margin-bottom:12px"></div>
+                <button onclick="confirmPayNow('${payment_id}')" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-weight:700;font-size:.95rem;cursor:pointer">Tôi đã chuyển khoản</button>
+            </div>`;
+        // Start polling & countdown
+        let timeLeft=expire_at-Math.floor(Date.now()/1000);
+        const timer=setInterval(()=>{
+            timeLeft=expire_at-Math.floor(Date.now()/1000);
+            const el=document.getElementById('payTimer');
+            if(!el){clearInterval(timer);return;}
+            if(timeLeft<=0){el.textContent='Hết thời gian';clearInterval(timer);}
+            else{const m=Math.floor(timeLeft/60),s=timeLeft%60;el.textContent=`Còn ${m}:${s.toString().padStart(2,'0')}`;}
+        },1000);
+        const poll=setInterval(async()=>{
+            try{
+                const r=await fetch('/api/payment/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({payment_id})});
+                const d=await r.json();
+                if(d.status==='confirmed'){
+                    clearInterval(poll);clearInterval(timer);
+                    document.getElementById('payStatus').innerHTML='<span style="color:#4ade80;font-weight:700">Thanh toán thành công!</span>';
+                    document.getElementById('payTimer').textContent='';
+                    setTimeout(()=>location.reload(),2000);
+                } else if(d.status==='expired'){
+                    clearInterval(poll);clearInterval(timer);
+                    document.getElementById('payStatus').innerHTML='<span style="color:#fca5a5">Hết hạn. Vui lòng tạo lại.</span>';
+                }
+            }catch(e){}
+        },5000);
+    }
+
+    async function confirmPayNow(pid){
+        const r=await fetch('/api/payment/confirm-now',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({payment_id:pid})});
+        const d=await r.json();
+        if(d.status==='confirmed'){
+            document.getElementById('payStatus').innerHTML='<span style="color:#4ade80;font-weight:700">Thanh toán thành công!</span>';
+            setTimeout(()=>location.reload(),2000);
+        } else if(d.status==='expired'){
+            document.getElementById('payStatus').innerHTML='<span style="color:#fca5a5">Hết hạn.</span>';
+        } else {
+            document.getElementById('payStatus').innerHTML='<span style="color:#fde68a">Chưa tìm thấy. Vui lòng chờ thêm...</span>';
+        }
     }
 
     // Init
