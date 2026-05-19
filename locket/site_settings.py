@@ -214,6 +214,15 @@ def set_payment(value):
 def public_view():
     """Trimmed payload safe to expose to anonymous clients."""
     pay = get_payment()
+    # Video URL
+    video_url = ""
+    try:
+        row = db.get_conn().execute("SELECT value FROM site_settings WHERE key='video_url'").fetchone()
+        if row:
+            import json
+            video_url = json.loads(row["value"]).get("url", "")
+    except Exception:
+        pass
     return {
         "popup": get_popup(),
         "maintenance": get_maintenance(),
@@ -222,6 +231,7 @@ def public_view():
         "payment_amount": int(pay.get("amount", 20000)),
         "bank_name": pay.get("bank_name", "ACB"),
         "contact_bubble": get_contact_bubble(),
+        "video_url": video_url,
     }
 
 

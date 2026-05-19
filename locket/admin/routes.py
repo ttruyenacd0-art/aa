@@ -782,3 +782,77 @@ def coupons_delete(coupon_id):
     conn = db.get_conn()
     conn.execute("DELETE FROM coupons WHERE id=?", (coupon_id,))
     return jsonify({"success": True})
+
+
+# ─── USER MANAGEMENT ──────────────────────────────────────────────────────────
+
+@bp.route("/api/users", methods=["GET"])
+@admin_required
+def users_list():
+    q = (request.args.get("q") or "").strip()
+    conn = db.get_conn()
+    if q:
+        rows = conn.execute(
+            "SELECT id, username, created_at FROM user_accounts WHERE username LIKE ? ORDER BY created_at DESC LIMIT 50",
+            (f"%{q}%",)
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT id, username, created_at FROM user_accounts ORDER BY created_at DESC LIMIT 50"
+        ).fetchall()
+    users = [{"id": r["id"], "username": r["username"], "created_at": r["created_at"]} for r in rows]
+    return jsonify({"success": True, "users": users})
+
+
+@bp.route("/api/users/<int:user_id>/password", methods=["PUT"])
+@admin_required
+def users_change_password(user_id):
+    import hashlib
+    body = request.get_json(silent=True) or {}
+    password = (body.get("password") or "").strip()
+    if len(password) < 6:
+        return jsonify({"success": False, "error": "Mật khẩu phải có ít nhất 6 ký tự"}), 400
+
+    salted = "LOCKET_SALT_2025:" + password
+    password_hash = hashlib.sha256(salted.encode()).hexdigest()
+
+    conn = db.get_conn()
+    row = conn.execute("SELECT id FROM user_accounts WHERE id=?", (user_id,)).fetchone()
+    if not row:
+        return jsonify({"success": False, "error": "User không tồn tại"}), 404
+
+    conn.execute("UPDATE user_accounts SET password_hash=? WHERE id=?", (password_hash, user_id))
+    return jsonify({"success": True})
+
+
+# ─── VIDEO SETTINGS ───────────────────────────────────────────────────────────
+
+@bp.route("/api/video-settings", methods=["GET"])
+@admin_required
+def video_settings_get():
+    conn = db.get_conn()
+    row = conn.execute("SELECT value FROM site_settings WHERE key='video_url'").fetchone()
+    video_url = ""
+    if row:
+        try:
+            import json as _json
+            video_url = _json.loads(row["value"]).get("url", "")
+        except Exception:
+            video_url = row["value"] if isinstance(row["value"], str) else ""
+    return jsonify({"success": True, "video_url": video_url})
+
+
+@bp.route("/api/video-settings", methods=["PUT"])
+@admin_required
+def video_settings_set():
+    body = request.get_json(silent=True) or {}
+    video_url = (body.get("video_url") or "").strip()
+    import json as _json
+    payload = _json.dumps({"url": video_url})
+    conn = db.get_conn()
+    conn.execute(
+        "INSERT INTO site_settings (key, value, updated_at) VALUES (?,?,?) "
+        "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
+        ("video_url", payload, time.time()),
+    )
+    return jsonify({"success": True})
