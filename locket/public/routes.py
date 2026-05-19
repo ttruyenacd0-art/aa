@@ -247,16 +247,89 @@ def queue_status():
 
 # ─── PAYMENT ROUTES ───────────────────────────────────────────────────────────
 
+@bp.route("/api/packages", methods=["GET"])
+def public_packages_list():
+    """Danh sách gói dịch vụ (public, chỉ trả gói enabled)."""
+    conn = db.get_conn()
+    rows = conn.execute(
+        "SELECT id, name, code, price, description FROM packages WHERE enabled=1 ORDER BY price ASC"
+    ).fetchall()
+    items = [
+        {
+            "id": r["id"],
+            "name": r["name"],
+            "code": r["code"],
+            "price": r["price"],
+            "description": r["description"],
+        }
+        for r in rows
+    ]
+    return jsonify({"success": True, "packages": items})
+
+
+@bp.route("/api/coupon/validate", methods=["POST"])
+def public_coupon_validate():
+    """Kiểm tra mã giảm giá có hợp lệ không."""
+    data = request.json or {}
+    code = (data.get("code") or "").strip().upper().replace(" ", "")
+    if not code:
+        return jsonify({"success": False, "msg": "Vui lòng nhập mã giảm giá"}), 400
+
+    conn = db.get_conn()
+    row = conn.execute(
+        "SELECT * FROM coupons WHERE code=? AND enabled=1", (code,)
+    ).fetchone()
+    if not row:
+        return jsonify({"success": False, "msg": "Mã giảm giá không tồn tại hoặc đã hết hạn"}), 404
+
+    if row["max_uses"] is not None and row["used_count"] >= row["max_uses"]:
+        return jsonify({"success": False, "msg": "Mã giảm giá đã hết lượt sử dụng"}), 410
+
+    return jsonify({
+        "success": True,
+        "discount_percent": row["discount_percent"],
+        "code": row["code"],
+    })
+
+
 @bp.route("/api/payment/create", methods=["POST"])
 def payment_create():
     """Tạo payment mới, trả về payment_id và thông tin chuyển khoản."""
     data = request.json or {}
     username = (data.get("username") or "").strip()
+    package_id = data.get("package_id")
+    coupon_code = (data.get("coupon_code") or "").strip().upper().replace(" ", "")
+
     if not username:
         return jsonify({"success": False, "msg": "Username is required"}), 400
+    if not package_id:
+        return jsonify({"success": False, "msg": "Vui lòng chọn gói dịch vụ"}), 400
+
+    conn = db.get_conn()
+
+    # Lấy thông tin gói
+    pkg = conn.execute(
+        "SELECT * FROM packages WHERE id=? AND enabled=1", (package_id,)
+    ).fetchone()
+    if not pkg:
+        return jsonify({"success": False, "msg": "Gói dịch vụ không tồn tại"}), 404
+
+    original_amount = pkg["price"]
+    final_amount = original_amount
+
+    # Áp dụng mã giảm giá nếu có
+    if coupon_code:
+        coupon = conn.execute(
+            "SELECT * FROM coupons WHERE code=? AND enabled=1", (coupon_code,)
+        ).fetchone()
+        if not coupon:
+            return jsonify({"success": False, "msg": "Mã giảm giá không hợp lệ"}), 400
+        if coupon["max_uses"] is not None and coupon["used_count"] >= coupon["max_uses"]:
+            return jsonify({"success": False, "msg": "Mã giảm giá đã hết lượt sử dụng"}), 400
+        discount = int(original_amount * coupon["discount_percent"] / 100)
+        final_amount = max(original_amount - discount, 0)
 
     now = time.time()
-    conn = db.get_conn()
 
     # Huỷ các payment pending cũ của username này
     conn.execute(
@@ -265,12 +338,10 @@ def payment_create():
     )
 
     cfg = _get_payment_cfg()
-    PAYMENT_AMOUNT = int(cfg.get("amount", 20000))
     bank_type = cfg.get("bank_type", "acb").lower()
     bank_api_url = cfg.get("mb_api_url", "") if bank_type == "mb" else cfg.get("acb_api_url", "")
 
-    # Lấy max transactionID hiện tại để làm mốc — chỉ chấp nhận tx mới hơn
-    # ACB: max(int ID), MB: hash của ID đầu tiên trong list (mới nhất)
+    # Lấy max transactionID hiện tại để làm mốc
     min_tx_id = 0
     try:
         snap_resp = _requests.get(bank_api_url, timeout=8)
@@ -278,27 +349,39 @@ def payment_create():
         existing_txs = snap_resp.json().get("transactions", [])
         if existing_txs:
             if bank_type == "mb":
-                # MB trả danh sách theo thứ tự mới → cũ; snapshot hash của tx mới nhất
                 min_tx_id = _normalize_tx_id(existing_txs[0].get("transactionID"))
             else:
                 min_tx_id = max(_normalize_tx_id(t.get("transactionID")) for t in existing_txs)
     except Exception:
-        min_tx_id = 0  # fallback: không lọc được, nhưng vẫn tạo payment
+        min_tx_id = 0
 
     payment_id = str(uuid.uuid4())[:8].upper()
+
+    # Nội dung chuyển khoản = MÃ GÓI + tên đăng nhập (không dấu cách)
+    # VD: LOCKETGOLDPRO tinophan
+    transfer_description = f"{pkg['code']} {username}"
+
     conn.execute(
-        "INSERT INTO payments (payment_id, username, amount, status, created_at, min_tx_id) VALUES (?,?,?,?,?,?)",
-        (payment_id, username, PAYMENT_AMOUNT, "pending", now, min_tx_id)
+        "INSERT INTO payments (payment_id, username, amount, status, created_at, min_tx_id, package_id, coupon_code, original_amount) VALUES (?,?,?,?,?,?,?,?,?)",
+        (payment_id, username, final_amount, "pending", now, min_tx_id, package_id, coupon_code, original_amount)
     )
+
+    # Tăng used_count cho coupon
+    if coupon_code:
+        conn.execute("UPDATE coupons SET used_count = used_count + 1 WHERE code=?", (coupon_code,))
 
     return jsonify({
         "success": True,
         "payment_id": payment_id,
-        "amount": PAYMENT_AMOUNT,
+        "amount": final_amount,
+        "original_amount": original_amount,
+        "discount_percent": coupon["discount_percent"] if coupon_code else 0,
+        "package_name": pkg["name"],
+        "package_code": pkg["code"],
         "bank_account": cfg.get("bank_account", ""),
         "bank_name": cfg.get("bank_name", "ACB"),
         "account_name": cfg.get("account_name", ""),
-        "description": f"{cfg.get('description_prefix', 'LOCKET')} {username}",
+        "description": transfer_description,
         "expire_at": int(now + PAYMENT_EXPIRE_SECONDS),
     })
 
@@ -351,16 +434,17 @@ def _row_get(row, key, default=None):
         return default
 
 
-def _find_matching_tx(transactions, username_lower, min_tx_id, conn, min_amount=20000, bank_type="acb"):
+def _find_matching_tx(transactions, match_keyword, min_tx_id, conn, min_amount=20000, bank_type="acb"):
     """Tìm giao dịch mới nhất khớp với payment.
-    Hỗ trợ cả ACB (transactionID số nguyên) và MB (transactionID string như FT...).
+    match_keyword: string cần tìm trong description (đã lowercase).
+    Có thể là "packagecode username" hoặc chỉ "username".
 
-    - ACB: transactionID là int, so sánh > min_tx_id
-    - MB:  transactionID là string (FT...), min_tx_id là hash của tx mới nhất lúc snapshot.
-           Bỏ qua tx có hash == min_tx_id (đã tồn tại), hoặc hash < min_tx_id không hợp lệ.
-           Thực tế MB list theo thứ tự mới → cũ nên các tx mới sẽ ở đầu list.
+    Hỗ trợ cả ACB (transactionID số nguyên) và MB (transactionID string như FT...).
     """
     is_mb = bank_type == "mb"
+
+    # Tách keyword thành các phần để match linh hoạt
+    keyword_parts = match_keyword.strip().split()
 
     for tx in transactions:
         raw_tx_id = tx.get("transactionID")
@@ -391,7 +475,8 @@ def _find_matching_tx(transactions, username_lower, min_tx_id, conn, min_amount=
             continue
 
         desc = (tx.get("description") or "").lower()
-        if username_lower not in desc:
+        # Check all keyword parts are present in description
+        if not all(part in desc for part in keyword_parts):
             continue
 
         # Dedup: kiểm tra tx này chưa được dùng cho payment nào khác
@@ -462,7 +547,15 @@ def payment_check():
     except Exception as e:
         return jsonify({"success": True, "status": "pending", "msg": f"Bank API error: {e}"})
 
-    tx_id = _find_matching_tx(transactions, row["username"].lower(), _row_get(row, "min_tx_id", 0), conn, int(_cfg.get("amount", 20000)), bank_type)
+    # Nội dung CK cần match: nếu có package_id thì dùng package_code + username, ngược lại dùng username
+    match_keyword = row["username"].lower()
+    pkg_id = _row_get(row, "package_id")
+    if pkg_id:
+        pkg = conn.execute("SELECT code FROM packages WHERE id=?", (pkg_id,)).fetchone()
+        if pkg:
+            match_keyword = f"{pkg['code'].lower()} {row['username'].lower()}"
+
+    tx_id = _find_matching_tx(transactions, match_keyword, _row_get(row, "min_tx_id", 0), conn, int(row["amount"]), bank_type)
     if tx_id:
         _confirm_payment_and_save(conn, payment_id, row["username"], tx_id, now)
         return jsonify({"success": True, "status": "confirmed", "username": row["username"]})
@@ -598,7 +691,15 @@ def payment_confirm_now():
     except Exception as e:
         return jsonify({"success": False, "msg": f"Không thể kết nối ngân hàng: {e}"}), 502
 
-    tx_id = _find_matching_tx(transactions, row["username"].lower(), _row_get(row, "min_tx_id", 0), conn, int(_cfg2.get("amount", 20000)), bank_type2)
+    # Nội dung CK cần match: nếu có package_id thì dùng package_code + username
+    match_keyword2 = row["username"].lower()
+    pkg_id2 = _row_get(row, "package_id")
+    if pkg_id2:
+        pkg2 = conn.execute("SELECT code FROM packages WHERE id=?", (pkg_id2,)).fetchone()
+        if pkg2:
+            match_keyword2 = f"{pkg2['code'].lower()} {row['username'].lower()}"
+
+    tx_id = _find_matching_tx(transactions, match_keyword2, _row_get(row, "min_tx_id", 0), conn, int(row["amount"]), bank_type2)
     if tx_id:
         _confirm_payment_and_save(conn, payment_id, row["username"], tx_id, now)
         return jsonify({"success": True, "status": "confirmed", "username": row["username"]})

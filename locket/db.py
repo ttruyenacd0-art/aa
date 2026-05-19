@@ -127,6 +127,28 @@ CREATE TABLE IF NOT EXISTS payments (
 CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_payments_username ON payments(username);
 
+-- Gói dịch vụ (admin tạo)
+CREATE TABLE IF NOT EXISTS packages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    code TEXT NOT NULL UNIQUE,
+    price INTEGER NOT NULL DEFAULT 20000,
+    description TEXT DEFAULT '',
+    enabled INTEGER NOT NULL DEFAULT 1,
+    created_at REAL NOT NULL
+);
+
+-- Mã giảm giá
+CREATE TABLE IF NOT EXISTS coupons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL UNIQUE,
+    discount_percent INTEGER NOT NULL DEFAULT 0,
+    max_uses INTEGER DEFAULT NULL,
+    used_count INTEGER NOT NULL DEFAULT 0,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    created_at REAL NOT NULL
+);
+
 -- Tài khoản người dùng (đăng ký/đăng nhập, theo dõi lịch sử mua Gold)
 CREATE TABLE IF NOT EXISTS user_accounts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -177,6 +199,15 @@ def _migrate_schema_columns(conn):
     if "min_tx_id" not in cols:
         conn.execute("ALTER TABLE payments ADD COLUMN min_tx_id INTEGER NOT NULL DEFAULT 0")
         print("db: migrated payments.min_tx_id column")
+    if "package_id" not in cols:
+        conn.execute("ALTER TABLE payments ADD COLUMN package_id INTEGER")
+        print("db: migrated payments.package_id column")
+    if "coupon_code" not in cols:
+        conn.execute("ALTER TABLE payments ADD COLUMN coupon_code TEXT DEFAULT ''")
+        print("db: migrated payments.coupon_code column")
+    if "original_amount" not in cols:
+        conn.execute("ALTER TABLE payments ADD COLUMN original_amount INTEGER DEFAULT 0")
+        print("db: migrated payments.original_amount column")
 
 
 def _migrate_legacy_files(conn):

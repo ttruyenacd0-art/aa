@@ -581,6 +581,14 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
                 Thanh toán
             </button>
+            <button class="tab-btn" data-tab="packages">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                Gói dịch vụ
+            </button>
+            <button class="tab-btn" data-tab="coupons">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+                Mã giảm giá
+            </button>
             <button class="tab-btn" data-tab="telegram">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 Telegram
@@ -887,6 +895,84 @@
                 <p id="bank_history_msg" style="font-size:.82rem;margin:8px 0 0;min-height:18px"></p>
             </div>
         </div>
+
+        <div class="tab-pane" data-pane="packages">
+            <div class="card">
+                <h2>
+                    <span style="display:flex;align-items:center;gap:8px;">
+                        <svg class="section-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                        Quản lý gói dịch vụ
+                    </span>
+                    <span class="pill" id="pkg-count">...</span>
+                </h2>
+                <p style="font-size:.82rem;color:#888;margin:4px 0 12px">Tạo các gói nâng cấp. Mã gói sẽ được dùng làm nội dung chuyển khoản (VD: LOCKETGOLDPRO + tên đăng nhập).</p>
+                <table id="pkg-table">
+                    <thead><tr><th>Tên gói</th><th>Mã gói</th><th>Giá (VNĐ)</th><th>Trạng thái</th><th></th></tr></thead>
+                    <tbody></tbody>
+                </table>
+                <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06)">
+                    <h3 style="font-size:.9em;margin-bottom:10px;color:var(--gold-light)">➕ Thêm gói mới</h3>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                        <div>
+                            <div style="font-size:.72em;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin-bottom:4px">Tên gói</div>
+                            <input id="pkg-name" type="text" placeholder="VD: Locket Gold Pro" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,215,0,.15);background:rgba(255,255,255,.03);color:#fff;font-size:.9rem">
+                        </div>
+                        <div>
+                            <div style="font-size:.72em;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin-bottom:4px">Mã gói (viết liền, không dấu)</div>
+                            <input id="pkg-code" type="text" placeholder="VD: LOCKETGOLDPRO" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,215,0,.15);background:rgba(255,255,255,.03);color:#fff;font-size:.9rem;text-transform:uppercase">
+                        </div>
+                        <div>
+                            <div style="font-size:.72em;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin-bottom:4px">Giá (VNĐ)</div>
+                            <input id="pkg-price" type="number" min="1000" step="1000" value="20000" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,215,0,.15);background:rgba(255,255,255,.03);color:#fff;font-size:.9rem">
+                        </div>
+                        <div>
+                            <div style="font-size:.72em;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin-bottom:4px">Mô tả (tuỳ chọn)</div>
+                            <input id="pkg-desc" type="text" placeholder="VD: Gói Gold vĩnh viễn" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,215,0,.15);background:rgba(255,255,255,.03);color:#fff;font-size:.9rem">
+                        </div>
+                    </div>
+                    <button onclick="addPackage()" style="margin-top:10px;padding:10px 20px;background:linear-gradient(135deg,#ffd700,#ffaa00);color:#000;font-weight:700;border:none;border-radius:10px;cursor:pointer;font-size:.9rem">
+                        ➕ Thêm gói
+                    </button>
+                </div>
+            </div>
+        </div><!-- /packages pane -->
+
+        <div class="tab-pane" data-pane="coupons">
+            <div class="card">
+                <h2>
+                    <span style="display:flex;align-items:center;gap:8px;">
+                        <svg class="section-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+                        Quản lý mã giảm giá
+                    </span>
+                    <span class="pill" id="coupon-count">...</span>
+                </h2>
+                <p style="font-size:.82rem;color:#888;margin:4px 0 12px">Tạo mã giảm giá để người dùng nhập khi thanh toán. VD: mã SALE10 giảm 10%.</p>
+                <table id="coupon-table">
+                    <thead><tr><th>Mã</th><th>Giảm (%)</th><th>Đã dùng</th><th>Giới hạn</th><th>Trạng thái</th><th></th></tr></thead>
+                    <tbody></tbody>
+                </table>
+                <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06)">
+                    <h3 style="font-size:.9em;margin-bottom:10px;color:var(--gold-light)">➕ Thêm mã giảm giá</h3>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+                        <div>
+                            <div style="font-size:.72em;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin-bottom:4px">Mã giảm giá</div>
+                            <input id="coupon-code" type="text" placeholder="VD: SALE10" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,215,0,.15);background:rgba(255,255,255,.03);color:#fff;font-size:.9rem;text-transform:uppercase">
+                        </div>
+                        <div>
+                            <div style="font-size:.72em;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin-bottom:4px">% Giảm giá</div>
+                            <input id="coupon-percent" type="number" min="1" max="100" value="10" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,215,0,.15);background:rgba(255,255,255,.03);color:#fff;font-size:.9rem">
+                        </div>
+                        <div>
+                            <div style="font-size:.72em;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin-bottom:4px">Giới hạn lượt (trống = vô hạn)</div>
+                            <input id="coupon-max" type="number" min="1" placeholder="Không giới hạn" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,215,0,.15);background:rgba(255,255,255,.03);color:#fff;font-size:.9rem">
+                        </div>
+                    </div>
+                    <button onclick="addCoupon()" style="margin-top:10px;padding:10px 20px;background:linear-gradient(135deg,#ffd700,#ffaa00);color:#000;font-weight:700;border:none;border-radius:10px;cursor:pointer;font-size:.9rem">
+                        ➕ Thêm mã
+                    </button>
+                </div>
+            </div>
+        </div><!-- /coupons pane -->
 
         <div class="tab-pane" data-pane="telegram">
             <div class="card">
@@ -1845,6 +1931,161 @@
                 msg.textContent = '❌ Lỗi kết nối: ' + e.message;
             }
         }
+
+        // ── PACKAGES (Gói dịch vụ) ─────────────────────────────────────────
+        async function loadPackages() {
+            try {
+                const data = await api('GET', '/admin/api/packages');
+                const items = data.packages || [];
+                document.getElementById('pkg-count').textContent = items.length + ' gói';
+                const tbody = document.querySelector('#pkg-table tbody');
+                tbody.innerHTML = '';
+                if (!items.length) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty">Chưa có gói nào</td></tr>';
+                    return;
+                }
+                const fmtPrice = n => n.toLocaleString('vi-VN') + ' ₫';
+                items.forEach(pkg => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><span class="username">${escapeHtml(pkg.name)}</span><br><span style="font-size:.75em;color:#888">${escapeHtml(pkg.description || '')}</span></td>
+                        <td class="mono">${escapeHtml(pkg.code)}</td>
+                        <td style="font-weight:600;color:var(--gold)">${fmtPrice(pkg.price)}</td>
+                        <td>
+                            <label class="switch" style="gap:6px;">
+                                <input type="checkbox" data-pkg-toggle="${pkg.id}" ${pkg.enabled ? 'checked' : ''}>
+                                <span class="track"></span>
+                                <span style="font-size:.78em;">${pkg.enabled ? 'Bật' : 'Tắt'}</span>
+                            </label>
+                        </td>
+                        <td style="text-align:right">
+                            <button class="icon danger" data-pkg-del="${pkg.id}">${svgTrash}</button>
+                        </td>`;
+                    tbody.appendChild(tr);
+                });
+                // Toggle enabled
+                tbody.querySelectorAll('input[data-pkg-toggle]').forEach(inp => {
+                    inp.onchange = async () => {
+                        try {
+                            await api('PUT', `/admin/api/packages/${inp.dataset.pkgToggle}`, { enabled: inp.checked });
+                            await loadPackages();
+                        } catch(e) { Swal.fire({...swalGlass, icon:'error', title:'Lỗi', text:e.message}); }
+                    };
+                });
+                // Delete
+                tbody.querySelectorAll('button[data-pkg-del]').forEach(btn => {
+                    btn.onclick = async () => {
+                        const ok = await Swal.fire({...swalGlass, icon:'warning', title:'Xoá gói này?', showCancelButton:true, confirmButtonText:'Xoá'});
+                        if (!ok.isConfirmed) return;
+                        try {
+                            await api('DELETE', `/admin/api/packages/${btn.dataset.pkgDel}`);
+                            await loadPackages();
+                        } catch(e) { Swal.fire({...swalGlass, icon:'error', title:'Lỗi', text:e.message}); }
+                    };
+                });
+            } catch(e) { console.error(e); }
+        }
+
+        async function addPackage() {
+            const name = document.getElementById('pkg-name').value.trim();
+            const code = document.getElementById('pkg-code').value.trim();
+            const price = parseInt(document.getElementById('pkg-price').value) || 20000;
+            const description = document.getElementById('pkg-desc').value.trim();
+            if (!name || !code) {
+                Swal.fire({...swalGlass, icon:'warning', title:'Thiếu thông tin', text:'Vui lòng nhập tên gói và mã gói'});
+                return;
+            }
+            try {
+                await api('POST', '/admin/api/packages', { name, code, price, description });
+                document.getElementById('pkg-name').value = '';
+                document.getElementById('pkg-code').value = '';
+                document.getElementById('pkg-price').value = '20000';
+                document.getElementById('pkg-desc').value = '';
+                await loadPackages();
+                Swal.fire({...swalGlass, icon:'success', title:'Đã thêm gói!', timer:1300, showConfirmButton:false});
+            } catch(e) {
+                Swal.fire({...swalGlass, icon:'error', title:'Không thể thêm', text:e.message});
+            }
+        }
+
+        // ── COUPONS (Mã giảm giá) ────────────────────────────────────────
+        async function loadCoupons() {
+            try {
+                const data = await api('GET', '/admin/api/coupons');
+                const items = data.coupons || [];
+                document.getElementById('coupon-count').textContent = items.length + ' mã';
+                const tbody = document.querySelector('#coupon-table tbody');
+                tbody.innerHTML = '';
+                if (!items.length) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty">Chưa có mã giảm giá nào</td></tr>';
+                    return;
+                }
+                items.forEach(c => {
+                    const tr = document.createElement('tr');
+                    const maxLabel = c.max_uses != null ? c.max_uses : '∞';
+                    tr.innerHTML = `
+                        <td class="mono" style="font-weight:600;color:var(--gold)">${escapeHtml(c.code)}</td>
+                        <td style="font-weight:600">${c.discount_percent}%</td>
+                        <td>${c.used_count}</td>
+                        <td>${maxLabel}</td>
+                        <td>
+                            <label class="switch" style="gap:6px;">
+                                <input type="checkbox" data-coupon-toggle="${c.id}" ${c.enabled ? 'checked' : ''}>
+                                <span class="track"></span>
+                                <span style="font-size:.78em;">${c.enabled ? 'Bật' : 'Tắt'}</span>
+                            </label>
+                        </td>
+                        <td style="text-align:right">
+                            <button class="icon danger" data-coupon-del="${c.id}">${svgTrash}</button>
+                        </td>`;
+                    tbody.appendChild(tr);
+                });
+                // Toggle enabled
+                tbody.querySelectorAll('input[data-coupon-toggle]').forEach(inp => {
+                    inp.onchange = async () => {
+                        try {
+                            await api('PUT', `/admin/api/coupons/${inp.dataset.couponToggle}`, { enabled: inp.checked });
+                            await loadCoupons();
+                        } catch(e) { Swal.fire({...swalGlass, icon:'error', title:'Lỗi', text:e.message}); }
+                    };
+                });
+                // Delete
+                tbody.querySelectorAll('button[data-coupon-del]').forEach(btn => {
+                    btn.onclick = async () => {
+                        const ok = await Swal.fire({...swalGlass, icon:'warning', title:'Xoá mã này?', showCancelButton:true, confirmButtonText:'Xoá'});
+                        if (!ok.isConfirmed) return;
+                        try {
+                            await api('DELETE', `/admin/api/coupons/${btn.dataset.couponDel}`);
+                            await loadCoupons();
+                        } catch(e) { Swal.fire({...swalGlass, icon:'error', title:'Lỗi', text:e.message}); }
+                    };
+                });
+            } catch(e) { console.error(e); }
+        }
+
+        async function addCoupon() {
+            const code = document.getElementById('coupon-code').value.trim();
+            const discount_percent = parseInt(document.getElementById('coupon-percent').value) || 10;
+            const maxVal = document.getElementById('coupon-max').value.trim();
+            const max_uses = maxVal ? parseInt(maxVal) : null;
+            if (!code) {
+                Swal.fire({...swalGlass, icon:'warning', title:'Thiếu thông tin', text:'Vui lòng nhập mã giảm giá'});
+                return;
+            }
+            try {
+                await api('POST', '/admin/api/coupons', { code, discount_percent, max_uses });
+                document.getElementById('coupon-code').value = '';
+                document.getElementById('coupon-percent').value = '10';
+                document.getElementById('coupon-max').value = '';
+                await loadCoupons();
+                Swal.fire({...swalGlass, icon:'success', title:'Đã thêm mã!', timer:1300, showConfirmButton:false});
+            } catch(e) {
+                Swal.fire({...swalGlass, icon:'error', title:'Không thể thêm', text:e.message});
+            }
+        }
+
+        loadPackages();
+        loadCoupons();
 
         loadPaymentSettings();
 
