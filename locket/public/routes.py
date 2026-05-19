@@ -760,6 +760,24 @@ def activate_page():
     return render_template("activate.html")
 
 
+@bp.route("/login")
+def login_page():
+    """Trang đăng nhập người dùng."""
+    if session.get("user_id"):
+        from flask import redirect
+        return redirect("/activate")
+    return render_template("login.html")
+
+
+@bp.route("/register")
+def register_page():
+    """Trang đăng ký người dùng."""
+    if session.get("user_id"):
+        from flask import redirect
+        return redirect("/activate")
+    return render_template("register.html")
+
+
 @bp.route("/api/packages", methods=["GET"])
 def packages_list():
     """Public API: list enabled pricing packages."""

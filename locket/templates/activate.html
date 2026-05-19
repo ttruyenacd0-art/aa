@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Kich Hoat Gold - Locket Gold</title>
+    <title>Kích Hoạt Gold - Locket Gold</title>
     <link rel="icon" href="https://sf-static.upanhlaylink.com/img/image_202601296d59cc036b9dbae09695b98cf9310a6b.jpg" type="image/jpeg">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -90,39 +90,39 @@
                 <span>Locket Gold</span>
             </a>
             <nav class="nav">
-                <a href="/">Trang chu</a>
-                <a href="/pricing">Bang gia</a>
-                <a href="/activate">Kich hoat</a>
+                <a href="/">Trang chủ</a>
+                <a href="/pricing">Bảng giá</a>
+                <a href="/activate">Kích hoạt</a>
             </nav>
         </div>
     </header>
 
     <section class="activate-section">
         <div class="section-header">
-            <h1>Kich Hoat Gold</h1>
-            <p>Nhap username Locket cua ban de kich hoat tinh nang Gold.</p>
+            <h1>Kích Hoạt Gold</h1>
+            <p>Nhập username Locket của bạn để kích hoạt tính năng Gold.</p>
         </div>
 
         <!-- Auth Section - Login/Register -->
         <div id="authSection" class="card">
-            <h2><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Dang nhap / Dang ky</h2>
+            <h2><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Đăng nhập / Đăng ký</h2>
             <div class="tabs">
-                <div class="tab active" onclick="switchAuthTab('login')">Dang nhap</div>
-                <div class="tab" onclick="switchAuthTab('register')">Dang ky</div>
+                <div class="tab active" onclick="switchAuthTab('login')">Đăng nhập</div>
+                <div class="tab" onclick="switchAuthTab('register')">Đăng ký</div>
             </div>
             <div id="authMsg" class="msg"></div>
             <div id="loginForm" class="tab-content active">
                 <div class="auth-form">
-                    <div class="input-group"><label>Username</label><input id="loginUser" placeholder="Nhap username"></div>
-                    <div class="input-group"><label>Mat khau</label><input id="loginPass" type="password" placeholder="Nhap mat khau"></div>
-                    <button class="btn btn-gold" onclick="doLogin()">Dang nhap</button>
+                    <div class="input-group"><label>Tên tài khoản</label><input id="loginUser" placeholder="Nhập tên tài khoản"></div>
+                    <div class="input-group"><label>Mật khẩu</label><input id="loginPass" type="password" placeholder="Nhập mật khẩu"></div>
+                    <button class="btn btn-gold" onclick="doLogin()">Đăng nhập</button>
                 </div>
             </div>
             <div id="registerForm" class="tab-content">
                 <div class="auth-form">
-                    <div class="input-group"><label>Username</label><input id="regUser" placeholder="Chon username (3+ ky tu)"></div>
-                    <div class="input-group"><label>Mat khau</label><input id="regPass" type="password" placeholder="Chon mat khau (6+ ky tu)"></div>
-                    <button class="btn btn-gold" onclick="doRegister()">Dang ky</button>
+                    <div class="input-group"><label>Tên tài khoản</label><input id="regUser" placeholder="Chọn tên tài khoản (3+ ký tự)"></div>
+                    <div class="input-group"><label>Mật khẩu</label><input id="regPass" type="password" placeholder="Chọn mật khẩu (6+ ký tự)"></div>
+                    <button class="btn btn-gold" onclick="doRegister()">Đăng ký</button>
                 </div>
             </div>
         </div>
@@ -133,7 +133,7 @@
                 <div class="user-info">
                     <svg width="20" height="20" fill="none" stroke="#f59e0b" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     <span id="loggedUser">-</span>
-                    <button class="btn-outline" style="margin-left:auto;padding:6px 12px;font-size:.8rem;border-radius:8px" onclick="doLogout()">Dang xuat</button>
+                    <button class="btn-outline" style="margin-left:auto;padding:6px 12px;font-size:.8rem;border-radius:8px" onclick="doLogout()">Đăng xuất</button>
                 </div>
 
                 <!-- Package Info -->
@@ -148,14 +148,14 @@
                     <div id="activateMsg" class="msg"></div>
                     <div id="activateLocked" class="locked-msg" style="display:none">
                         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-                        <h3>Chua mua goi</h3>
-                        <p>Ban can mua goi de su dung tinh nang kich hoat Gold.</p>
-                        <a href="/pricing">Xem bang gia &rarr;</a>
+                        <h3>Chưa mua gói</h3>
+                        <p>Bạn cần mua gói để sử dụng tính năng kích hoạt Gold.</p>
+                        <a href="/pricing">Xem bảng giá &rarr;</a>
                     </div>
                     <div id="activateForm" style="display:none">
                         <div class="auth-form">
-                            <div class="input-group"><label>Locket Username</label><input id="locketUser" placeholder="Nhap username Locket cua ban"></div>
-                            <button class="btn btn-gold" id="activateBtn" onclick="doActivate()">Kich hoat Gold</button>
+                            <div class="input-group"><label>Locket Username</label><input id="locketUser" placeholder="Nhập username Locket của bạn"></div>
+                            <button class="btn btn-gold" id="activateBtn" onclick="doActivate()">Kích hoạt Gold</button>
                         </div>
                     </div>
                 </div>
@@ -163,9 +163,9 @@
 
             <!-- Gold History -->
             <div class="card">
-                <h2><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>Lich su Gold</h2>
+                <h2><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>Lịch sử Gold</h2>
                 <div class="history-list" id="historyList">
-                    <p style="color:#6b7280;text-align:center">Chua co lich su.</p>
+                    <p style="color:#6b7280;text-align:center">Chưa có lịch sử.</p>
                 </div>
             </div>
         </div>
@@ -199,21 +199,21 @@
     async function doLogin(){
         const u=document.getElementById('loginUser').value.trim();
         const p=document.getElementById('loginPass').value.trim();
-        if(!u||!p){showMsg('authMsg','Vui long nhap day du thong tin','error');return;}
+        if(!u||!p){showMsg('authMsg','Vui lòng nhập đầy đủ thông tin','error');return;}
         const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
         const d=await r.json();
         if(d.success){loadUser();}
-        else showMsg('authMsg',d.msg||'Dang nhap that bai','error');
+        else showMsg('authMsg',d.msg||'Đăng nhập thất bại','error');
     }
 
     async function doRegister(){
         const u=document.getElementById('regUser').value.trim();
         const p=document.getElementById('regPass').value.trim();
-        if(!u||!p){showMsg('authMsg','Vui long nhap day du thong tin','error');return;}
+        if(!u||!p){showMsg('authMsg','Vui lòng nhập đầy đủ thông tin','error');return;}
         const r=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
         const d=await r.json();
         if(d.success){loadUser();}
-        else showMsg('authMsg',d.msg||'Dang ky that bai','error');
+        else showMsg('authMsg',d.msg||'Đăng ký thất bại','error');
     }
 
     async function doLogout(){
@@ -246,15 +246,15 @@
             document.getElementById('packageInfo').style.display='';
             document.getElementById('pkgName').textContent=d.package.name;
             document.getElementById('pkgDesc').textContent=d.package.description;
-            document.getElementById('pkgLimit').textContent=`Da dung: ${activationsUsed}/${maxActivations} luot kich hoat`;
+            document.getElementById('pkgLimit').textContent=`Đã dùng: ${activationsUsed}/${maxActivations} lượt kích hoạt`;
             if(activationsUsed<maxActivations){
                 document.getElementById('activateForm').style.display='';
                 document.getElementById('activateLocked').style.display='none';
             } else {
                 document.getElementById('activateForm').style.display='none';
                 document.getElementById('activateLocked').style.display='';
-                document.querySelector('#activateLocked h3').textContent='Het luot kich hoat';
-                document.querySelector('#activateLocked p').textContent='Ban da su dung het luot kich hoat cua goi nay.';
+                document.querySelector('#activateLocked h3').textContent='Hết lượt kích hoạt';
+                document.querySelector('#activateLocked p').textContent='Bạn đã sử dụng hết lượt kích hoạt của gói này.';
             }
         } else {
             document.getElementById('packageInfo').style.display='none';
@@ -265,42 +265,42 @@
 
     function renderHistory(items){
         const list=document.getElementById('historyList');
-        if(!items.length){list.innerHTML='<p style="color:#6b7280;text-align:center">Chua co lich su.</p>';return;}
+        if(!items.length){list.innerHTML='<p style="color:#6b7280;text-align:center">Chưa có lịch sử.</p>';return;}
         list.innerHTML=items.map(it=>{
             const date=new Date(it.purchased_at*1000).toLocaleDateString('vi-VN');
             return `<div class="history-item">
                 <span class="username">${it.locket_username}</span>
                 <span class="date">${date}</span>
-                <button class="reactivate-btn" onclick="doReactivate('${it.locket_username}')">Kich hoat lai</button>
+                <button class="reactivate-btn" onclick="doReactivate('${it.locket_username}')">Kích hoạt lại</button>
             </div>`;
         }).join('');
     }
 
     async function doActivate(){
         const username=document.getElementById('locketUser').value.trim();
-        if(!username){showMsg('activateMsg','Vui long nhap Locket username','error');return;}
+        if(!username){showMsg('activateMsg','Vui lòng nhập Locket username','error');return;}
         const btn=document.getElementById('activateBtn');
-        btn.disabled=true;btn.textContent='Dang xu ly...';
+        btn.disabled=true;btn.textContent='Đang xử lý...';
         try{
             const r=await fetch('/api/gold/activate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({locket_username:username})});
             const d=await r.json();
             if(d.success){
-                showMsg('activateMsg','Kich hoat thanh cong! Dang xu ly...','success');
+                showMsg('activateMsg','Kích hoạt thành công! Đang xử lý...','success');
                 document.getElementById('locketUser').value='';
                 setTimeout(()=>{loadUser();},2000);
             } else {
-                showMsg('activateMsg',d.msg||'Kich hoat that bai','error');
+                showMsg('activateMsg',d.msg||'Kích hoạt thất bại','error');
             }
-        }catch(e){showMsg('activateMsg','Loi ket noi','error');}
-        btn.disabled=false;btn.textContent='Kich hoat Gold';
+        }catch(e){showMsg('activateMsg','Lỗi kết nối','error');}
+        btn.disabled=false;btn.textContent='Kích hoạt Gold';
     }
 
     async function doReactivate(locketUsername){
-        if(!confirm('Kich hoat lai Gold cho '+locketUsername+'?')) return;
+        if(!confirm('Kích hoạt lại Gold cho '+locketUsername+'?')) return;
         const r=await fetch('/api/gold/reactivate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({locket_username:locketUsername})});
         const d=await r.json();
-        if(d.success){alert('Da gui yeu cau kich hoat lai thanh cong!');}
-        else{alert(d.msg||'That bai');}
+        if(d.success){alert('Đã gửi yêu cầu kích hoạt lại thành công!');}
+        else{alert(d.msg||'Thất bại');}
     }
 
     // Init

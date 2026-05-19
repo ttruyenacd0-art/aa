@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Đăng nhập - Locket Gold</title>
+    <link rel="icon" href="https://sf-static.upanhlaylink.com/img/image_202601296d59cc036b9dbae09695b98cf9310a6b.jpg" type="image/jpeg">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Outfit',sans-serif;background:#000;color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden}
+        a{text-decoration:none;color:inherit}
+
+        .bg-glow{position:fixed;inset:0;z-index:0;pointer-events:none}
+        .bg-glow .orb{position:absolute;border-radius:50%;filter:blur(120px);opacity:.4;animation:drift 18s ease-in-out infinite alternate}
+        .bg-glow .orb:nth-child(1){width:400px;height:400px;background:rgba(245,158,11,.15);top:-10%;left:-5%}
+        .bg-glow .orb:nth-child(2){width:300px;height:300px;background:rgba(217,119,6,.1);bottom:-5%;right:-5%;animation-delay:-8s}
+        @keyframes drift{0%{transform:translate(0,0) scale(1)}50%{transform:translate(30px,-20px) scale(1.1)}100%{transform:translate(-15px,15px) scale(.95)}}
+
+        .auth-container{position:relative;z-index:1;width:100%;max-width:420px;padding:24px}
+        .auth-card{background:rgba(16,16,16,.8);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:40px 32px;text-align:center}
+        .auth-logo{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:32px}
+        .auth-logo img{width:48px;height:48px;border-radius:50%;border:2px solid rgba(245,158,11,.3)}
+        .auth-logo span{font-size:1.5rem;font-weight:900;background:linear-gradient(135deg,#fde68a,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-transform:uppercase}
+        .auth-title{font-size:1.8rem;font-weight:800;margin-bottom:8px;background:linear-gradient(135deg,#fde68a,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .auth-subtitle{color:#9ca3af;font-size:.95rem;margin-bottom:32px}
+
+        .form-group{margin-bottom:16px;text-align:left}
+        .form-group label{display:block;font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;margin-bottom:8px}
+        .form-group input{width:100%;padding:14px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;color:#fff;font-size:1rem;font-family:inherit;transition:all .3s}
+        .form-group input::placeholder{color:rgba(255,255,255,.3)}
+        .form-group input:focus{outline:none;border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.1);background:rgba(255,255,255,.06)}
+
+        .btn-submit{width:100%;padding:14px;margin-top:24px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-size:1rem;font-weight:700;font-family:inherit;border:none;border-radius:12px;cursor:pointer;transition:all .3s}
+        .btn-submit:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(245,158,11,.4)}
+        .btn-submit:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+
+        .auth-footer{margin-top:24px;font-size:.9rem;color:#9ca3af}
+        .auth-footer a{color:#f59e0b;font-weight:600;transition:color .3s}
+        .auth-footer a:hover{color:#fbbf24}
+
+        .msg{padding:12px 16px;border-radius:10px;font-size:.85rem;margin-bottom:16px;display:none;text-align:left}
+        .msg.error{display:block;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
+        .msg.success{display:block;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#86efac}
+
+        .back-link{position:fixed;top:20px;left:20px;z-index:10;display:flex;align-items:center;gap:6px;color:#9ca3af;font-size:.9rem;transition:color .3s}
+        .back-link:hover{color:#f59e0b}
+        .back-link svg{width:18px;height:18px}
+    </style>
+</head>
+<body>
+    <div class="bg-glow"><div class="orb"></div><div class="orb"></div></div>
+
+    <a href="/" class="back-link">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
+        Trang chủ
+    </a>
+
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <img src="https://sf-static.upanhlaylink.com/img/image_20260129415b4b531beb8c3c98aacc4ddfbabea2.jpg" alt="Locket Gold">
+                <span>Locket Gold</span>
+            </div>
+            <h1 class="auth-title">Đăng nhập</h1>
+            <p class="auth-subtitle">Đăng nhập tài khoản để sử dụng dịch vụ</p>
+
+            <div id="msg" class="msg"></div>
+
+            <form onsubmit="doLogin(event)">
+                <div class="form-group">
+                    <label>Tên tài khoản</label>
+                    <input type="text" id="username" placeholder="Nhập tên tài khoản..." autocomplete="username" required>
+                </div>
+                <div class="form-group">
+                    <label>Mật khẩu</label>
+                    <input type="password" id="password" placeholder="Nhập mật khẩu..." autocomplete="current-password" required>
+                </div>
+                <button type="submit" class="btn-submit" id="submitBtn">Đăng nhập</button>
+            </form>
+
+            <div class="auth-footer">
+                Chưa có tài khoản? <a href="/register">Đăng ký ngay</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    async function doLogin(e) {
+        e.preventDefault();
+        const btn = document.getElementById('submitBtn');
+        const msg = document.getElementById('msg');
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
+
+        if (!username || !password) {
+            msg.className = 'msg error';
+            msg.textContent = 'Vui lòng nhập đầy đủ thông tin';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Đang xử lý...';
+        msg.className = 'msg';
+        msg.style.display = 'none';
+
+        try {
+            const r = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username, password})
+            });
+            const d = await r.json();
+            if (d.success) {
+                msg.className = 'msg success';
+                msg.textContent = 'Đăng nhập thành công! Đang chuyển hướng...';
+                setTimeout(() => { window.location.href = '/activate'; }, 1000);
+            } else {
+                msg.className = 'msg error';
+                msg.textContent = d.msg || 'Đăng nhập thất bại';
+                btn.disabled = false;
+                btn.textContent = 'Đăng nhập';
+            }
+        } catch(err) {
+            msg.className = 'msg error';
+            msg.textContent = 'Lỗi kết nối server';
+            btn.disabled = false;
+            btn.textContent = 'Đăng nhập';
+        }
+    }
+    </script>
+</body>
+</html>
