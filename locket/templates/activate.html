@@ -436,6 +436,7 @@ function showPaymentQR(data){
         <div id="payStatus" style="color:#71717a;font-size:.88rem;margin-bottom:4px">Đang chờ thanh toán...</div>
         <div id="payTimer" style="color:#fbbf24;font-weight:700;font-size:1.1rem;margin-bottom:14px"></div>
         <button onclick="confirmPayNow('${payment_id}')" class="btn btn-gold">Tôi đã chuyển khoản</button>
+        <button onclick="cancelPayment('${payment_id}')" class="btn btn-outline" style="margin-top:10px;color:#fca5a5;border-color:rgba(239,68,68,.3)">Hủy giao dịch</button>
     </div>`;
     let timeLeft=expire_at-Math.floor(Date.now()/1000);
     const timer=setInterval(()=>{timeLeft=expire_at-Math.floor(Date.now()/1000);const el=document.getElementById('payTimer');if(!el){clearInterval(timer);return;}if(timeLeft<=0){el.textContent='Hết thời gian';clearInterval(timer);}else{const m=Math.floor(timeLeft/60),s=timeLeft%60;el.textContent=`Còn ${m}:${s.toString().padStart(2,'0')}`;}},1000);
@@ -447,6 +448,21 @@ async function confirmPayNow(pid){
     if(d.status==='confirmed'){localStorage.removeItem('pendingPayment');document.getElementById('payStatus').innerHTML='<span style="color:#4ade80;font-weight:700">Thanh toán thành công!</span>';setTimeout(()=>location.reload(),2000);}
     else if(d.status==='expired'){localStorage.removeItem('pendingPayment');document.getElementById('payStatus').innerHTML='<span style="color:#fca5a5">Hết hạn.</span>';}
     else{document.getElementById('payStatus').innerHTML='<span style="color:#fde68a">Chưa tìm thấy. Vui lòng chờ thêm...</span>';}
+}
+async function cancelPayment(pid){
+    if(!confirm('Bạn có chắc muốn hủy giao dịch này không?'))return;
+    try{
+        const r=await fetch('/api/payment/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({payment_id:pid})});
+        const d=await r.json();
+        if(d.success){
+            localStorage.removeItem('pendingPayment');
+            document.getElementById('payStatus').innerHTML='<span style="color:#fca5a5;font-weight:700">Giao dịch đã bị hủy</span>';
+            document.getElementById('payTimer').textContent='';
+            setTimeout(()=>location.reload(),1500);
+        } else {
+            alert(d.msg||'Không thể hủy giao dịch');
+        }
+    }catch(e){alert('Lỗi kết nối, vui lòng thử lại');}
 }
 </script>
 

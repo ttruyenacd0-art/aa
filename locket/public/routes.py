@@ -655,6 +655,39 @@ def auth_me():
     })
 
 
+# ─── PAYMENT CANCEL ────────────────────────────────────────────────────────────
+
+@bp.route("/api/payment/cancel", methods=["POST"])
+def payment_cancel():
+    """Người dùng bấm 'Hủy giao dịch' → hủy payment pending."""
+    data = request.json or {}
+    payment_id = (data.get("payment_id") or "").strip()
+    if not payment_id:
+        return jsonify({"success": False, "msg": "payment_id is required"}), 400
+
+    conn = db.get_conn()
+    row = conn.execute(
+        "SELECT * FROM payments WHERE payment_id=?", (payment_id,)
+    ).fetchone()
+    if not row:
+        return jsonify({"success": False, "msg": "Không tìm thấy giao dịch"}), 404
+    if row["status"] != "pending":
+        return jsonify({"success": False, "msg": "Giao dịch không thể hủy (trạng thái: {})".format(row["status"])}), 400
+
+    conn.execute(
+        "UPDATE payments SET status='cancelled' WHERE payment_id=?", (payment_id,)
+    )
+
+    # Hoàn lại lượt coupon nếu đã áp dụng
+    if row["coupon_code"]:
+        conn.execute(
+            "UPDATE coupons SET used_count = MAX(used_count - 1, 0) WHERE code=?",
+            (row["coupon_code"],)
+        )
+
+    return jsonify({"success": True, "msg": "Đã hủy giao dịch thành công"})
+
+
 # ─── PAYMENT CONFIRM (manual trigger) ─────────────────────────────────────────
 
 @bp.route("/api/payment/confirm-now", methods=["POST"])
