@@ -745,3 +745,202 @@ def payment_link_to_account():
     conn = db.get_conn()
     linked = _link_pending_payments_to_user(conn, user_id, payment_ids)
     return jsonify({"success": True, "linked": linked})
+
+
+
+# ─── PRICING PAGE & PACKAGES API ──────────────────────────────────────────────
+
+@bp.route("/pricing")
+def pricing_page():
+    return render_template("pricing.html")
+
+
+@bp.route("/activate")
+def activate_page():
+    return render_template("activate.html")
+
+
+@bp.route("/api/packages", methods=["GET"])
+def packages_list():
+    """Public API: list enabled pricing packages."""
+    conn = db.get_conn()
+    rows = conn.execute(
+        "SELECT * FROM pricing_packages WHERE enabled=1 ORDER BY sort_order ASC, id ASC"
+    ).fetchall()
+    packages = []
+    for r in rows:
+        packages.append({
+            "id": r["id"],
+            "name": r["name"],
+            "price": r["price"],
+            "duration": r["duration"],
+            "description": r["description"],
+            "features": r["features"],
+            "purchase_count": r["purchase_count"],
+            "max_activations": r["max_activations"],
+            "is_featured": bool(r["is_featured"]),
+        })
+    return jsonify({"success": True, "packages": packages})
+
+
+@bp.route("/api/user-package", methods=["GET"])
+def user_package():
+    """Return the package info for current logged-in user (based on their purchases)."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "msg": "Chua dang nhap"}), 401
+
+    conn = db.get_conn()
+
+    # Find user's latest gold_purchase that has a package_id
+    purchase = conn.execute(
+        "SELECT package_id FROM gold_purchases WHERE user_id=? AND package_id IS NOT NULL ORDER BY purchased_at DESC LIMIT 1",
+        (user_id,)
+    ).fetchone()
+
+    # Also check gold_activations
+    activation = conn.execute(
+        "SELECT package_id FROM gold_activations WHERE user_id=? ORDER BY activated_at DESC LIMIT 1",
+        (user_id,)
+    ).fetchone()
+
+    pkg_id = None
+    if purchase:
+        pkg_id = purchase["package_id"]
+    elif activation:
+        pkg_id = activation["package_id"]
+
+    if not pkg_id:
+        # Check if user has any confirmed payment -> assign first available package
+        confirmed = conn.execute(
+            "SELECT payment_id FROM payments WHERE username IN (SELECT username FROM user_accounts WHERE id=?) AND status='confirmed' ORDER BY confirmed_at DESC LIMIT 1",
+            (user_id,)
+        ).fetchone()
+        if not confirmed:
+            return jsonify({"success": True, "package": None, "activations_used": 0})
+        # Assign the first enabled package
+        first_pkg = conn.execute(
+            "SELECT id FROM pricing_packages WHERE enabled=1 ORDER BY sort_order ASC LIMIT 1"
+        ).fetchone()
+        if first_pkg:
+            pkg_id = first_pkg["id"]
+        else:
+            return jsonify({"success": True, "package": None, "activations_used": 0})
+
+    pkg = conn.execute(
+        "SELECT * FROM pricing_packages WHERE id=?", (pkg_id,)
+    ).fetchone()
+    if not pkg:
+        return jsonify({"success": True, "package": None, "activations_used": 0})
+
+    # Count activations used
+    activations_used = conn.execute(
+        "SELECT COUNT(*) as c FROM gold_activations WHERE user_id=? AND package_id=?",
+        (user_id, pkg_id)
+    ).fetchone()["c"]
+
+    return jsonify({
+        "success": True,
+        "package": {
+            "id": pkg["id"],
+            "name": pkg["name"],
+            "price": pkg["price"],
+            "duration": pkg["duration"],
+            "description": pkg["description"],
+            "max_activations": pkg["max_activations"],
+        },
+        "activations_used": activations_used,
+    })
+
+
+@bp.route("/api/gold/activate", methods=["POST"])
+def gold_activate():
+    """Activate Gold for a locket_username - only works if user has purchased a package."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "msg": "Chua dang nhap"}), 401
+
+    data = request.json or {}
+    locket_username = (data.get("locket_username") or "").strip()
+    if not locket_username:
+        return jsonify({"success": False, "msg": "Locket username la bat buoc"}), 400
+
+    conn = db.get_conn()
+
+    # Get user's package
+    purchase = conn.execute(
+        "SELECT package_id FROM gold_purchases WHERE user_id=? AND package_id IS NOT NULL ORDER BY purchased_at DESC LIMIT 1",
+        (user_id,)
+    ).fetchone()
+    activation_rec = conn.execute(
+        "SELECT package_id FROM gold_activations WHERE user_id=? ORDER BY activated_at DESC LIMIT 1",
+        (user_id,)
+    ).fetchone()
+
+    pkg_id = None
+    if purchase:
+        pkg_id = purchase["package_id"]
+    elif activation_rec:
+        pkg_id = activation_rec["package_id"]
+
+    if not pkg_id:
+        # Try to find from confirmed payments
+        user_row = conn.execute("SELECT username FROM user_accounts WHERE id=?", (user_id,)).fetchone()
+        if user_row:
+            confirmed = conn.execute(
+                "SELECT payment_id FROM payments WHERE username=? AND status='confirmed' ORDER BY confirmed_at DESC LIMIT 1",
+                (user_row["username"],)
+            ).fetchone()
+            if confirmed:
+                first_pkg = conn.execute(
+                    "SELECT id FROM pricing_packages WHERE enabled=1 ORDER BY sort_order ASC LIMIT 1"
+                ).fetchone()
+                if first_pkg:
+                    pkg_id = first_pkg["id"]
+
+    if not pkg_id:
+        return jsonify({"success": False, "msg": "Ban chua mua goi nao. Vui long mua goi truoc."}), 403
+
+    pkg = conn.execute("SELECT * FROM pricing_packages WHERE id=?", (pkg_id,)).fetchone()
+    if not pkg:
+        return jsonify({"success": False, "msg": "Goi khong ton tai"}), 404
+
+    # Check activation limit
+    used = conn.execute(
+        "SELECT COUNT(*) as c FROM gold_activations WHERE user_id=? AND package_id=?",
+        (user_id, pkg_id)
+    ).fetchone()["c"]
+
+    if used >= pkg["max_activations"]:
+        return jsonify({"success": False, "msg": f"Da het luot kich hoat ({used}/{pkg['max_activations']})"}), 403
+
+    # Add to queue
+    rotator = current_app.rotator
+    qm = current_app.queue_manager
+    if rotator is None or rotator.size() == 0:
+        return jsonify({"success": False, "msg": "Chua co tai khoan Locket. Admin hay them qua /admin."}), 503
+
+    client_id = qm.add_to_queue(locket_username)
+    if client_id is None:
+        return jsonify({"success": False, "msg": "Queue dang day, vui long thu lai sau."}), 503
+
+    # Record activation
+    now = time.time()
+    conn.execute(
+        "INSERT INTO gold_activations (user_id, package_id, locket_username, activated_at, status) VALUES (?,?,?,?,?)",
+        (user_id, pkg_id, locket_username, now, "active")
+    )
+    # Also record in gold_purchases for history
+    conn.execute(
+        "INSERT INTO gold_purchases (user_id, locket_username, package_id, purchased_at) VALUES (?,?,?,?)",
+        (user_id, locket_username, pkg_id, now)
+    )
+
+    status = qm.get_status(client_id)
+    return jsonify({
+        "success": True,
+        "client_id": client_id,
+        "position": status["position"],
+        "total_queue": status["total_queue"],
+        "estimated_time": status["estimated_time"],
+    })

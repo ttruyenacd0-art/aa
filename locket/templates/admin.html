@@ -1889,5 +1889,136 @@
 
         loadTelegramSettings();
     </script>
+
+    <!-- ═══ PRICING PACKAGES MANAGEMENT ═══ -->
+    <div class="card" style="margin-top:18px">
+        <h2>
+            <span style="display:flex;align-items:center;gap:8px">
+                <svg class="section-icon" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 13L2 9Z"/></svg>
+                Quan ly bang gia
+            </span>
+            <span class="pill" id="pkgCount">0/3</span>
+        </h2>
+        <div id="pkgMsg" style="font-size:.85em;margin-bottom:8px"></div>
+        <div id="pkgList" style="display:flex;flex-direction:column;gap:12px"></div>
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.06)">
+            <h3 style="font-size:.9em;margin-bottom:12px;color:#ccc">Them goi moi</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <input id="pkg_name" placeholder="Ten goi (VD: Locket Gold Pro)">
+                <input id="pkg_price" placeholder="Gia (VD: 59000)" type="number">
+                <input id="pkg_duration" placeholder="Han su dung (VD: 1 nam)">
+                <input id="pkg_max_act" placeholder="So luot kich hoat (VD: 2)" type="number">
+                <input id="pkg_desc" placeholder="Mo ta goi" style="grid-column:1/-1">
+                <input id="pkg_purchases" placeholder="So luot mua hien thi (VD: 375)" type="number">
+                <textarea id="pkg_features" placeholder="Tinh nang (moi dong 1 tinh nang)" style="grid-column:1/-1;min-height:80px"></textarea>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+                <label style="font-size:.85em;color:#aaa;display:flex;align-items:center;gap:6px">
+                    <input type="checkbox" id="pkg_featured"> Goi noi bat
+                </label>
+                <button onclick="addPackage()" style="margin-left:auto">+ Them goi</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    async function loadPackages(){
+        const r=await fetch('/admin/api/packages');
+        const d=await r.json();
+        if(!d.success)return;
+        const list=document.getElementById('pkgList');
+        document.getElementById('pkgCount').textContent=d.packages.length+'/3';
+        if(!d.packages.length){list.innerHTML='<div class="empty">Chua co goi nao</div>';return;}
+        list.innerHTML=d.packages.map(p=>{
+            const features=JSON.parse(p.features||'[]');
+            return `<div style="padding:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <strong style="color:#fbbf24">${p.name}</strong>
+                    <div style="display:flex;gap:6px">
+                        ${p.is_featured?'<span class="pill">Noi bat</span>':''}
+                        <button onclick="deletePackage(${p.id})" style="background:rgba(255,100,100,.15);color:#ff6b6b;padding:4px 10px;font-size:.75em">Xoa</button>
+                    </div>
+                </div>
+                <div style="font-size:.85em;color:#aaa">Gia: ${new Intl.NumberFormat('vi-VN').format(p.price)}d | Han: ${p.duration} | Kich hoat: ${p.max_activations} luot | Luot mua: ${p.purchase_count}</div>
+                <div style="font-size:.8em;color:#777;margin-top:4px">${p.description}</div>
+                <div style="font-size:.8em;color:#666;margin-top:4px">${features.join(' | ')}</div>
+            </div>`;
+        }).join('');
+    }
+
+    async function addPackage(){
+        const name=document.getElementById('pkg_name').value.trim();
+        const price=parseInt(document.getElementById('pkg_price').value)||0;
+        const duration=document.getElementById('pkg_duration').value.trim()||'Vinh vien';
+        const max_act=parseInt(document.getElementById('pkg_max_act').value)||1;
+        const desc=document.getElementById('pkg_desc').value.trim();
+        const purchases=parseInt(document.getElementById('pkg_purchases').value)||0;
+        const features=document.getElementById('pkg_features').value.split('\n').map(s=>s.trim()).filter(Boolean);
+        const featured=document.getElementById('pkg_featured').checked;
+        if(!name){document.getElementById('pkgMsg').textContent='Ten goi la bat buoc';return;}
+        const r=await fetch('/admin/api/packages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,price,duration,max_activations:max_act,description:desc,purchase_count:purchases,features,is_featured:featured})});
+        const d=await r.json();
+        document.getElementById('pkgMsg').textContent=d.success?'Da them!':d.error;
+        if(d.success){['pkg_name','pkg_price','pkg_duration','pkg_max_act','pkg_desc','pkg_purchases','pkg_features'].forEach(id=>document.getElementById(id).value='');document.getElementById('pkg_featured').checked=false;loadPackages();}
+    }
+
+    async function deletePackage(id){
+        if(!confirm('Xoa goi nay?'))return;
+        await fetch('/admin/api/packages/'+id,{method:'DELETE'});
+        loadPackages();
+    }
+    loadPackages();
+    </script>
+
+    <!-- ═══ CONTACT BUBBLE SETTINGS ═══ -->
+    <div class="card" style="margin-top:18px">
+        <h2>
+            <span style="display:flex;align-items:center;gap:8px">
+                <svg class="section-icon" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                Bong bong lien he
+            </span>
+        </h2>
+        <div id="bubbleMsg" style="font-size:.85em;margin-bottom:10px"></div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+            <label style="font-size:.85em;color:#aaa;display:flex;align-items:center;gap:8px">
+                <input type="checkbox" id="bubble_enabled"> Bat bong bong lien he
+            </label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <select id="bubble_type" style="background:rgba(255,255,255,.03);color:#fff;border:1px solid rgba(255,215,0,.15);border-radius:10px;padding:9px 12px;font-size:.9em">
+                    <option value="zalo">Zalo</option>
+                    <option value="phone">So dien thoai</option>
+                </select>
+                <input id="bubble_phone" placeholder="So dien thoai (VD: 0901234567)">
+            </div>
+            <input id="bubble_zalo" placeholder="Link Zalo (VD: https://zalo.me/0901234567)" style="width:100%;background:rgba(255,255,255,.03);color:#fff;border:1px solid rgba(255,215,0,.15);border-radius:10px;padding:9px 12px;font-size:.9em">
+            <button onclick="saveBubble()">Luu cai dat</button>
+        </div>
+    </div>
+
+    <script>
+    async function loadBubble(){
+        const r=await fetch('/admin/api/contact-bubble');
+        const d=await r.json();
+        if(!d.success)return;
+        const b=d.contact_bubble;
+        document.getElementById('bubble_enabled').checked=b.enabled;
+        document.getElementById('bubble_type').value=b.type||'zalo';
+        document.getElementById('bubble_phone').value=b.phone||'';
+        document.getElementById('bubble_zalo').value=b.zalo_link||'';
+    }
+
+    async function saveBubble(){
+        const r=await fetch('/admin/api/contact-bubble',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+            enabled:document.getElementById('bubble_enabled').checked,
+            type:document.getElementById('bubble_type').value,
+            phone:document.getElementById('bubble_phone').value.trim(),
+            zalo_link:document.getElementById('bubble_zalo').value.trim()
+        })});
+        const d=await r.json();
+        document.getElementById('bubbleMsg').textContent=d.success?'Da luu!':'Loi';
+        document.getElementById('bubbleMsg').style.color=d.success?'#4caf50':'#f44336';
+    }
+    loadBubble();
+    </script>
 </body>
 </html>

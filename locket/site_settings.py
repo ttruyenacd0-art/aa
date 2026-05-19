@@ -24,6 +24,7 @@ LAYOUT_KEY = "layout"
 
 PAYMENT_KEY = "payment_settings"
 TELEGRAM_KEY = "telegram_settings"
+CONTACT_BUBBLE_KEY = "contact_bubble"
 THEMES = ("gold", "aurora", "sunset", "mono")
 LAYOUTS = ("stacked", "split", "spotlight")
 
@@ -36,6 +37,13 @@ _DEFAULTS = {
     },
     THEME_KEY: {"name": "gold"},
     LAYOUT_KEY: {"name": "stacked"},
+    CONTACT_BUBBLE_KEY: {
+        "enabled": False,
+        "type": "zalo",
+        "phone": "",
+        "zalo_link": "",
+        "label": "Liên hệ",
+    },
     TELEGRAM_KEY: {
         "bot_token": "",
         "chat_id": "",
@@ -213,4 +221,24 @@ def public_view():
         "layout": get_layout(),
         "payment_amount": int(pay.get("amount", 20000)),
         "bank_name": pay.get("bank_name", "ACB"),
+        "contact_bubble": get_contact_bubble(),
     }
+
+
+def get_contact_bubble():
+    with _lock:
+        return _read(CONTACT_BUBBLE_KEY)
+
+
+def set_contact_bubble(value):
+    cur = get_contact_bubble()
+    allowed = set(_DEFAULTS[CONTACT_BUBBLE_KEY].keys())
+    for k, v in (value or {}).items():
+        if k in allowed:
+            cur[k] = v
+    cur["enabled"] = bool(cur.get("enabled"))
+    if cur.get("type") not in ("zalo", "phone"):
+        cur["type"] = "zalo"
+    with _lock:
+        _write(CONTACT_BUBBLE_KEY, cur)
+    return cur

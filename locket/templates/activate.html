@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kich Hoat Gold - Locket Gold</title>
+    <link rel="icon" href="https://sf-static.upanhlaylink.com/img/image_202601296d59cc036b9dbae09695b98cf9310a6b.jpg" type="image/jpeg">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Outfit',sans-serif;background:#000;color:#fff;min-height:100vh;overflow-x:hidden}
+        a{text-decoration:none;color:inherit}
+
+        .header{position:fixed;top:0;left:0;right:0;z-index:50;background:rgba(0,0,0,.8);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.1)}
+        .header-inner{max-width:1200px;margin:0 auto;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
+        .logo{display:flex;align-items:center;gap:12px}
+        .logo img{width:40px;height:40px;border-radius:50%;border:1px solid rgba(245,158,11,.3)}
+        .logo span{font-size:1.5rem;font-weight:900;background:linear-gradient(135deg,#fde68a,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-transform:uppercase}
+        .nav{display:flex;align-items:center;gap:16px}
+        .nav a{padding:8px 16px;font-size:.875rem;font-weight:500;color:#d1d5db;border:1px solid rgba(255,255,255,.2);border-radius:999px;transition:all .3s}
+        .nav a:hover{border-color:rgba(245,158,11,.5);color:#fbbf24}
+        @media(max-width:768px){.nav{display:none}}
+
+        .activate-section{padding:140px 24px 80px;max-width:600px;margin:0 auto}
+        .section-header{text-align:center;margin-bottom:40px}
+        .section-header h1{font-size:2.5rem;font-weight:900;margin-bottom:12px;background:linear-gradient(135deg,#fde68a,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .section-header p{color:#9ca3af;font-size:1rem}
+
+        .card{background:rgba(16,16,16,.75);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:32px;margin-bottom:24px}
+        .card h2{font-size:1.2rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+        .card h2 svg{width:20px;height:20px;color:#f59e0b}
+
+        .auth-form{display:flex;flex-direction:column;gap:12px}
+        .input-group{position:relative}
+        .input-group label{display:block;font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#9ca3af;margin-bottom:6px}
+        .input-group input{width:100%;padding:12px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;color:#fff;font-size:1rem;font-family:inherit;transition:all .3s}
+        .input-group input:focus{outline:none;border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.1)}
+        .btn{width:100%;padding:14px;border-radius:12px;font-size:1rem;font-weight:700;border:none;cursor:pointer;transition:all .3s;font-family:inherit}
+        .btn-gold{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000}
+        .btn-gold:hover{box-shadow:0 8px 25px rgba(245,158,11,.4);transform:translateY(-2px)}
+        .btn-gold:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+        .btn-outline{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff}
+        .btn-outline:hover{background:rgba(255,255,255,.1)}
+
+        .msg{padding:12px 16px;border-radius:12px;font-size:.9rem;margin-bottom:12px;display:none}
+        .msg.error{display:block;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
+        .msg.success{display:block;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#86efac}
+        .msg.info{display:block;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#fde68a}
+
+        .user-info{display:flex;align-items:center;gap:12px;padding:16px;background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.15);border-radius:12px;margin-bottom:16px}
+        .user-info span{font-weight:600;color:#fbbf24}
+
+        .history-list{display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto}
+        .history-item{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;font-size:.9rem}
+        .history-item .username{font-weight:600;color:#fff}
+        .history-item .date{color:#6b7280;font-size:.8rem}
+        .history-item .reactivate-btn{padding:6px 12px;border-radius:8px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#fbbf24;font-size:.75rem;font-weight:600;cursor:pointer;transition:all .3s}
+        .history-item .reactivate-btn:hover{background:rgba(245,158,11,.2)}
+
+        .package-info{padding:16px;background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.15);border-radius:12px;margin-bottom:16px}
+        .package-info h3{font-size:1rem;font-weight:700;color:#fbbf24;margin-bottom:4px}
+        .package-info p{color:#9ca3af;font-size:.85rem}
+        .package-info .limit{color:#6b7280;font-size:.8rem;margin-top:4px}
+
+        .locked-msg{text-align:center;padding:40px 20px;color:#6b7280}
+        .locked-msg svg{width:48px;height:48px;color:#4b5563;margin-bottom:16px}
+        .locked-msg h3{font-size:1.2rem;color:#9ca3af;margin-bottom:8px}
+        .locked-msg p{font-size:.9rem;margin-bottom:20px}
+        .locked-msg a{color:#f59e0b;font-weight:600}
+
+        .tabs{display:flex;gap:8px;margin-bottom:24px}
+        .tab{flex:1;padding:10px;text-align:center;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);font-weight:600;font-size:.9rem;cursor:pointer;transition:all .3s;color:#9ca3af}
+        .tab.active{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;border-color:transparent}
+        .tab-content{display:none}
+        .tab-content.active{display:block}
+
+        .contact-bubble{position:fixed;bottom:24px;right:24px;z-index:9999}
+        .contact-bubble a{display:flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 4px 20px rgba(245,158,11,.4);transition:all .3s;animation:bb 2s infinite}
+        .contact-bubble a:hover{transform:scale(1.1)}
+        .contact-bubble a svg{width:28px;height:28px;color:#000}
+        @keyframes bb{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="header-inner">
+            <a href="/" class="logo">
+                <img src="https://sf-static.upanhlaylink.com/img/image_20260129415b4b531beb8c3c98aacc4ddfbabea2.jpg" alt="Locket Gold">
+                <span>Locket Gold</span>
+            </a>
+            <nav class="nav">
+                <a href="/">Trang chu</a>
+                <a href="/pricing">Bang gia</a>
+                <a href="/activate">Kich hoat</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="activate-section">
+        <div class="section-header">
+            <h1>Kich Hoat Gold</h1>
+            <p>Nhap username Locket cua ban de kich hoat tinh nang Gold.</p>
+        </div>
+
+        <!-- Auth Section - Login/Register -->
+        <div id="authSection" class="card">
+            <h2><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Dang nhap / Dang ky</h2>
+            <div class="tabs">
+                <div class="tab active" onclick="switchAuthTab('login')">Dang nhap</div>
+                <div class="tab" onclick="switchAuthTab('register')">Dang ky</div>
+            </div>
+            <div id="authMsg" class="msg"></div>
+            <div id="loginForm" class="tab-content active">
+                <div class="auth-form">
+                    <div class="input-group"><label>Username</label><input id="loginUser" placeholder="Nhap username"></div>
+                    <div class="input-group"><label>Mat khau</label><input id="loginPass" type="password" placeholder="Nhap mat khau"></div>
+                    <button class="btn btn-gold" onclick="doLogin()">Dang nhap</button>
+                </div>
+            </div>
+            <div id="registerForm" class="tab-content">
+                <div class="auth-form">
+                    <div class="input-group"><label>Username</label><input id="regUser" placeholder="Chon username (3+ ky tu)"></div>
+                    <div class="input-group"><label>Mat khau</label><input id="regPass" type="password" placeholder="Chon mat khau (6+ ky tu)"></div>
+                    <button class="btn btn-gold" onclick="doRegister()">Dang ky</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logged In Section -->
+        <div id="loggedInSection" style="display:none">
+            <div class="card">
+                <div class="user-info">
+                    <svg width="20" height="20" fill="none" stroke="#f59e0b" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span id="loggedUser">-</span>
+                    <button class="btn-outline" style="margin-left:auto;padding:6px 12px;font-size:.8rem;border-radius:8px" onclick="doLogout()">Dang xuat</button>
+                </div>
+
+                <!-- Package Info -->
+                <div id="packageInfo" class="package-info" style="display:none">
+                    <h3 id="pkgName">-</h3>
+                    <p id="pkgDesc">-</p>
+                    <div class="limit" id="pkgLimit">-</div>
+                </div>
+
+                <!-- Activate Form (only if has package) -->
+                <div id="activateArea">
+                    <div id="activateMsg" class="msg"></div>
+                    <div id="activateLocked" class="locked-msg" style="display:none">
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                        <h3>Chua mua goi</h3>
+                        <p>Ban can mua goi de su dung tinh nang kich hoat Gold.</p>
+                        <a href="/pricing">Xem bang gia &rarr;</a>
+                    </div>
+                    <div id="activateForm" style="display:none">
+                        <div class="auth-form">
+                            <div class="input-group"><label>Locket Username</label><input id="locketUser" placeholder="Nhap username Locket cua ban"></div>
+                            <button class="btn btn-gold" id="activateBtn" onclick="doActivate()">Kich hoat Gold</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gold History -->
+            <div class="card">
+                <h2><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>Lich su Gold</h2>
+                <div class="history-list" id="historyList">
+                    <p style="color:#6b7280;text-align:center">Chua co lich su.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="contact-bubble" id="contactBubble" style="display:none">
+        <a id="contactLink" href="#" target="_blank">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </a>
+    </div>
+
+    <script>
+    let currentUser = null;
+    let userPackage = null;
+    let activationsUsed = 0;
+    let maxActivations = 0;
+
+    function switchAuthTab(tab){
+        document.querySelectorAll('.tabs .tab').forEach((t,i)=>{t.classList.toggle('active',i===(tab==='login'?0:1))});
+        document.getElementById('loginForm').classList.toggle('active',tab==='login');
+        document.getElementById('registerForm').classList.toggle('active',tab==='register');
+        document.getElementById('authMsg').className='msg';
+    }
+
+    function showMsg(id, text, type){
+        const el=document.getElementById(id);
+        el.textContent=text;
+        el.className='msg '+type;
+    }
+
+    async function doLogin(){
+        const u=document.getElementById('loginUser').value.trim();
+        const p=document.getElementById('loginPass').value.trim();
+        if(!u||!p){showMsg('authMsg','Vui long nhap day du thong tin','error');return;}
+        const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+        const d=await r.json();
+        if(d.success){loadUser();}
+        else showMsg('authMsg',d.msg||'Dang nhap that bai','error');
+    }
+
+    async function doRegister(){
+        const u=document.getElementById('regUser').value.trim();
+        const p=document.getElementById('regPass').value.trim();
+        if(!u||!p){showMsg('authMsg','Vui long nhap day du thong tin','error');return;}
+        const r=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+        const d=await r.json();
+        if(d.success){loadUser();}
+        else showMsg('authMsg',d.msg||'Dang ky that bai','error');
+    }
+
+    async function doLogout(){
+        await fetch('/api/auth/logout',{method:'POST'});
+        currentUser=null;
+        document.getElementById('authSection').style.display='';
+        document.getElementById('loggedInSection').style.display='none';
+    }
+
+    async function loadUser(){
+        const r=await fetch('/api/auth/me');
+        const d=await r.json();
+        if(d.logged_in){
+            currentUser=d.username;
+            document.getElementById('authSection').style.display='none';
+            document.getElementById('loggedInSection').style.display='';
+            document.getElementById('loggedUser').textContent=d.username;
+            renderHistory(d.gold_history||[]);
+            loadUserPackage();
+        }
+    }
+
+    async function loadUserPackage(){
+        const r=await fetch('/api/user-package');
+        const d=await r.json();
+        if(d.success && d.package){
+            userPackage=d.package;
+            activationsUsed=d.activations_used||0;
+            maxActivations=d.package.max_activations||1;
+            document.getElementById('packageInfo').style.display='';
+            document.getElementById('pkgName').textContent=d.package.name;
+            document.getElementById('pkgDesc').textContent=d.package.description;
+            document.getElementById('pkgLimit').textContent=`Da dung: ${activationsUsed}/${maxActivations} luot kich hoat`;
+            if(activationsUsed<maxActivations){
+                document.getElementById('activateForm').style.display='';
+                document.getElementById('activateLocked').style.display='none';
+            } else {
+                document.getElementById('activateForm').style.display='none';
+                document.getElementById('activateLocked').style.display='';
+                document.querySelector('#activateLocked h3').textContent='Het luot kich hoat';
+                document.querySelector('#activateLocked p').textContent='Ban da su dung het luot kich hoat cua goi nay.';
+            }
+        } else {
+            document.getElementById('packageInfo').style.display='none';
+            document.getElementById('activateForm').style.display='none';
+            document.getElementById('activateLocked').style.display='';
+        }
+    }
+
+    function renderHistory(items){
+        const list=document.getElementById('historyList');
+        if(!items.length){list.innerHTML='<p style="color:#6b7280;text-align:center">Chua co lich su.</p>';return;}
+        list.innerHTML=items.map(it=>{
+            const date=new Date(it.purchased_at*1000).toLocaleDateString('vi-VN');
+            return `<div class="history-item">
+                <span class="username">${it.locket_username}</span>
+                <span class="date">${date}</span>
+                <button class="reactivate-btn" onclick="doReactivate('${it.locket_username}')">Kich hoat lai</button>
+            </div>`;
+        }).join('');
+    }
+
+    async function doActivate(){
+        const username=document.getElementById('locketUser').value.trim();
+        if(!username){showMsg('activateMsg','Vui long nhap Locket username','error');return;}
+        const btn=document.getElementById('activateBtn');
+        btn.disabled=true;btn.textContent='Dang xu ly...';
+        try{
+            const r=await fetch('/api/gold/activate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({locket_username:username})});
+            const d=await r.json();
+            if(d.success){
+                showMsg('activateMsg','Kich hoat thanh cong! Dang xu ly...','success');
+                document.getElementById('locketUser').value='';
+                setTimeout(()=>{loadUser();},2000);
+            } else {
+                showMsg('activateMsg',d.msg||'Kich hoat that bai','error');
+            }
+        }catch(e){showMsg('activateMsg','Loi ket noi','error');}
+        btn.disabled=false;btn.textContent='Kich hoat Gold';
+    }
+
+    async function doReactivate(locketUsername){
+        if(!confirm('Kich hoat lai Gold cho '+locketUsername+'?')) return;
+        const r=await fetch('/api/gold/reactivate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({locket_username:locketUsername})});
+        const d=await r.json();
+        if(d.success){alert('Da gui yeu cau kich hoat lai thanh cong!');}
+        else{alert(d.msg||'That bai');}
+    }
+
+    // Init
+    loadUser();
+
+    // Contact bubble
+    fetch('/api/site-settings').then(r=>r.json()).then(data=>{
+        if(data.contact_bubble && data.contact_bubble.enabled){
+            document.getElementById('contactBubble').style.display='block';
+            const link=document.getElementById('contactLink');
+            if(data.contact_bubble.type==='phone') link.href='tel:'+data.contact_bubble.phone;
+            else link.href=data.contact_bubble.zalo_link||'#';
+        }
+    }).catch(()=>{});
+    </script>
+</body>
+</html>

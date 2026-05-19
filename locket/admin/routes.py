@@ -577,3 +577,124 @@ def bank_history():
         "count": len(normalized),
         "transactions": normalized,
     })
+
+
+
+# ─── PRICING PACKAGES MANAGEMENT ──────────────────────────────────────────────
+
+MAX_PACKAGES = 3
+
+
+@bp.route("/api/packages", methods=["GET"])
+@admin_required
+def admin_packages_list():
+    conn = db.get_conn()
+    rows = conn.execute(
+        "SELECT * FROM pricing_packages ORDER BY sort_order ASC, id ASC"
+    ).fetchall()
+    packages = []
+    for r in rows:
+        packages.append({
+            "id": r["id"],
+            "name": r["name"],
+            "price": r["price"],
+            "duration": r["duration"],
+            "description": r["description"],
+            "features": r["features"],
+            "purchase_count": r["purchase_count"],
+            "max_activations": r["max_activations"],
+            "is_featured": bool(r["is_featured"]),
+            "sort_order": r["sort_order"],
+            "enabled": bool(r["enabled"]),
+            "created_at": r["created_at"],
+        })
+    return jsonify({"success": True, "packages": packages})
+
+
+@bp.route("/api/packages", methods=["POST"])
+@admin_required
+def admin_packages_add():
+    conn = db.get_conn()
+    count = conn.execute("SELECT COUNT(*) as c FROM pricing_packages").fetchone()["c"]
+    if count >= MAX_PACKAGES:
+        return jsonify({"success": False, "error": f"Toi da {MAX_PACKAGES} goi"}), 400
+
+    body = request.get_json(silent=True) or {}
+    name = (body.get("name") or "").strip()
+    price = body.get("price", 0)
+    duration = (body.get("duration") or "Vinh vien").strip()
+    description = (body.get("description") or "").strip()
+    features = body.get("features", [])
+    max_activations = int(body.get("max_activations", 1))
+    is_featured = bool(body.get("is_featured", False))
+    purchase_count = int(body.get("purchase_count", 0))
+
+    if not name:
+        return jsonify({"success": False, "error": "Ten goi la bat buoc"}), 400
+    if not isinstance(features, list):
+        features = []
+
+    import json as _json
+    now = time.time()
+    conn.execute(
+        "INSERT INTO pricing_packages (name, price, duration, description, features, purchase_count, max_activations, is_featured, sort_order, enabled, created_at) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        (name, int(price), duration, description, _json.dumps(features), purchase_count, max_activations, 1 if is_featured else 0, count, 1, now)
+    )
+    return jsonify({"success": True})
+
+
+@bp.route("/api/packages/<int:pkg_id>", methods=["PUT"])
+@admin_required
+def admin_packages_update(pkg_id):
+    conn = db.get_conn()
+    row = conn.execute("SELECT id FROM pricing_packages WHERE id=?", (pkg_id,)).fetchone()
+    if not row:
+        return jsonify({"success": False, "error": "Khong tim thay goi"}), 404
+
+    body = request.get_json(silent=True) or {}
+    name = (body.get("name") or "").strip()
+    price = body.get("price", 0)
+    duration = (body.get("duration") or "Vinh vien").strip()
+    description = (body.get("description") or "").strip()
+    features = body.get("features", [])
+    max_activations = int(body.get("max_activations", 1))
+    is_featured = bool(body.get("is_featured", False))
+    purchase_count = int(body.get("purchase_count", 0))
+    enabled = bool(body.get("enabled", True))
+
+    if not name:
+        return jsonify({"success": False, "error": "Ten goi la bat buoc"}), 400
+    if not isinstance(features, list):
+        features = []
+
+    import json as _json
+    conn.execute(
+        "UPDATE pricing_packages SET name=?, price=?, duration=?, description=?, features=?, purchase_count=?, max_activations=?, is_featured=?, enabled=? WHERE id=?",
+        (name, int(price), duration, description, _json.dumps(features), purchase_count, max_activations, 1 if is_featured else 0, 1 if enabled else 0, pkg_id)
+    )
+    return jsonify({"success": True})
+
+
+@bp.route("/api/packages/<int:pkg_id>", methods=["DELETE"])
+@admin_required
+def admin_packages_delete(pkg_id):
+    conn = db.get_conn()
+    conn.execute("DELETE FROM pricing_packages WHERE id=?", (pkg_id,))
+    return jsonify({"success": True})
+
+
+# ─── CONTACT BUBBLE SETTINGS ──────────────────────────────────────────────────
+
+@bp.route("/api/contact-bubble", methods=["GET"])
+@admin_required
+def contact_bubble_get():
+    return jsonify({"success": True, "contact_bubble": site_settings.get_contact_bubble()})
+
+
+@bp.route("/api/contact-bubble", methods=["PUT"])
+@admin_required
+def contact_bubble_set():
+    body = request.get_json(silent=True) or {}
+    saved = site_settings.set_contact_bubble(body)
+    return jsonify({"success": True, "contact_bubble": saved})

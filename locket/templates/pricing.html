@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bang Gia - Locket Gold</title>
+    <link rel="icon" href="https://sf-static.upanhlaylink.com/img/image_202601296d59cc036b9dbae09695b98cf9310a6b.jpg" type="image/jpeg">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Outfit',sans-serif;background:#000;color:#fff;min-height:100vh;overflow-x:hidden}
+        a{text-decoration:none;color:inherit}
+
+        .header{position:fixed;top:0;left:0;right:0;z-index:50;background:rgba(0,0,0,.8);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.1)}
+        .header-inner{max-width:1200px;margin:0 auto;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
+        .logo{display:flex;align-items:center;gap:12px}
+        .logo img{width:40px;height:40px;border-radius:50%;border:1px solid rgba(245,158,11,.3)}
+        .logo span{font-size:1.5rem;font-weight:900;background:linear-gradient(135deg,#fde68a,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-transform:uppercase}
+        .nav{display:flex;align-items:center;gap:16px}
+        .nav a{padding:8px 16px;font-size:.875rem;font-weight:500;color:#d1d5db;border:1px solid rgba(255,255,255,.2);border-radius:999px;transition:all .3s}
+        .nav a:hover{border-color:rgba(245,158,11,.5);color:#fbbf24}
+        .nav .btn-start{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-weight:700;border:none;padding:10px 24px}
+        @media(max-width:768px){.nav{display:none}}
+
+        .pricing-section{padding:140px 24px 80px;background:linear-gradient(to bottom,transparent,rgba(245,158,11,.03))}
+        .section-inner{max-width:1100px;margin:0 auto}
+        .section-header{text-align:center;margin-bottom:48px}
+        .section-header h1{font-size:clamp(2.5rem,6vw,3.5rem);font-weight:900;letter-spacing:-1px;margin-bottom:12px;background:linear-gradient(135deg,#fde68a,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .section-header p{color:#9ca3af;font-size:1.1rem}
+
+        .packages-grid{display:flex;flex-direction:row;justify-content:center;gap:24px;flex-wrap:wrap}
+        .package-card{flex:1;min-width:280px;max-width:360px;border-radius:2rem;padding:3px;background:rgba(255,255,255,.08);transition:all .4s}
+        .package-card.featured{background:linear-gradient(135deg,#f59e0b,#d97706,#92400e);box-shadow:0 8px 40px rgba(245,158,11,.2)}
+        .package-inner{background:rgba(0,0,0,.95);border-radius:calc(2rem - 3px);padding:32px;height:100%;display:flex;flex-direction:column}
+
+        .package-badge{display:inline-flex;align-items:center;gap:6px;background:#f59e0b;color:#000;font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;border-radius:999px;margin-bottom:16px;width:fit-content}
+        .package-name{font-size:1.5rem;font-weight:700;margin-bottom:4px}
+        .package-desc{color:#6b7280;font-size:.85rem;margin-bottom:16px}
+        .package-purchases{color:#9ca3af;font-size:.8rem;margin-bottom:16px}
+        .package-purchases span{color:#f59e0b;font-weight:600}
+        .package-price{margin-bottom:4px}
+        .package-price .amount{font-size:2.8rem;font-weight:900;letter-spacing:-1px}
+        .package-duration{color:#6b7280;font-size:.85rem;margin-bottom:24px}
+        .package-features{list-style:none;display:flex;flex-direction:column;gap:12px;margin-bottom:32px;flex:1}
+        .package-features li{display:flex;align-items:center;gap:10px;font-size:.9rem;color:#d1d5db}
+        .package-features li .check{width:18px;height:18px;border-radius:50%;background:rgba(245,158,11,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .package-features li .check svg{width:12px;height:12px;color:#f59e0b}
+        .package-btn{width:100%;padding:14px;border-radius:16px;font-size:1rem;font-weight:700;border:none;cursor:pointer;transition:all .3s;text-align:center;display:block}
+        .package-btn.gold{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000}
+        .package-btn.gold:hover{box-shadow:0 8px 25px rgba(245,158,11,.4);transform:translateY(-2px)}
+        .package-btn.outline{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff}
+        .package-btn.outline:hover{background:rgba(255,255,255,.1)}
+        .no-packages{text-align:center;color:#6b7280;font-size:1.1rem;padding:60px 0}
+
+        .contact-bubble{position:fixed;bottom:24px;right:24px;z-index:9999}
+        .contact-bubble a{display:flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 4px 20px rgba(245,158,11,.4);transition:all .3s;animation:bounce-bubble 2s infinite}
+        .contact-bubble a:hover{transform:scale(1.1)}
+        .contact-bubble a svg{width:28px;height:28px;color:#000}
+        @keyframes bounce-bubble{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="header-inner">
+            <a href="/" class="logo">
+                <img src="https://sf-static.upanhlaylink.com/img/image_20260129415b4b531beb8c3c98aacc4ddfbabea2.jpg" alt="Locket Gold">
+                <span>Locket Gold</span>
+            </a>
+            <nav class="nav">
+                <a href="/">Trang chu</a>
+                <a href="/pricing">Bang gia</a>
+                <a href="/activate" class="btn-start">Kich hoat Gold</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="pricing-section">
+        <div class="section-inner">
+            <div class="section-header">
+                <h1>Bang Gia Dich Vu</h1>
+                <p>Chon goi nang cap phu hop voi ban. Thanh toan nhanh chong, kich hoat tu dong.</p>
+            </div>
+            <div class="packages-grid" id="packagesGrid">
+                <div class="no-packages">Dang tai bang gia...</div>
+            </div>
+        </div>
+    </section>
+
+    <div class="contact-bubble" id="contactBubble" style="display:none">
+        <a id="contactLink" href="#" target="_blank">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </a>
+    </div>
+
+    <script>
+    function formatPrice(price){
+        return new Intl.NumberFormat('vi-VN').format(price) + ' d';
+    }
+
+    function renderPackages(packages){
+        const grid = document.getElementById('packagesGrid');
+        if(!packages || packages.length===0){
+            grid.innerHTML='<div class="no-packages">Chua co goi nao. Vui long quay lai sau.</div>';
+            return;
+        }
+        grid.innerHTML = packages.map(pkg => {
+            const features = JSON.parse(pkg.features || '[]');
+            const isFeatured = pkg.is_featured;
+            return `
+            <div class="package-card ${isFeatured?'featured':''}">
+                <div class="package-inner">
+                    ${isFeatured?'<div class="package-badge"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 1l-1 3a1 1 0 01-.6.6L1 6l3.4 1.4a1 1 0 01.6.6L6 11l1-3.4a1 1 0 01.6-.6L11 6 7.6 4.6a1 1 0 01-.6-.6L6 1z"/></svg> Khuyen dung</div>':''}
+                    <div class="package-name">${pkg.name}</div>
+                    <div class="package-desc">${pkg.description}</div>
+                    <div class="package-purchases"><span>${pkg.purchase_count}</span> luot mua</div>
+                    <div class="package-price"><span class="amount">${formatPrice(pkg.price)}</span></div>
+                    <div class="package-duration">${pkg.duration}</div>
+                    <ul class="package-features">
+                        ${features.map(f=>`<li><span class="check"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>${f}</li>`).join('')}
+                    </ul>
+                    <a href="/activate" class="package-btn ${isFeatured?'gold':'outline'}">Nang cap ngay</a>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    fetch('/api/packages').then(r=>r.json()).then(data=>{
+        if(data.success) renderPackages(data.packages);
+        else document.getElementById('packagesGrid').innerHTML='<div class="no-packages">Khong the tai bang gia.</div>';
+    }).catch(()=>{
+        document.getElementById('packagesGrid').innerHTML='<div class="no-packages">Loi ket noi.</div>';
+    });
+
+    fetch('/api/site-settings').then(r=>r.json()).then(data=>{
+        if(data.contact_bubble && data.contact_bubble.enabled){
+            document.getElementById('contactBubble').style.display='block';
+            const link=document.getElementById('contactLink');
+            if(data.contact_bubble.type==='phone') link.href='tel:'+data.contact_bubble.phone;
+            else link.href=data.contact_bubble.zalo_link||'#';
+        }
+    }).catch(()=>{});
+    </script>
+</body>
+</html>
