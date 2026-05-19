@@ -675,7 +675,7 @@ def payment_cancel():
         return jsonify({"success": False, "msg": "Giao dịch không thể hủy (trạng thái: {})".format(row["status"])}), 400
 
     conn.execute(
-        "UPDATE payments SET status='cancelled' WHERE payment_id=?", (payment_id,)
+        "UPDATE payments SET status='expired' WHERE payment_id=?", (payment_id,)
     )
 
     # Hoàn lại lượt coupon nếu đã áp dụng
