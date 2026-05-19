@@ -523,6 +523,204 @@ def set_payment_settings():
 
 # ─── BANK HISTORY VIEWER ──────────────────────────────────────────────────────
 
+# ─── PACKAGES (Gói dịch vụ) ───────────────────────────────────────────────────
+
+@bp.route("/api/packages", methods=["GET"])
+@admin_required
+def packages_list():
+    conn = db.get_conn()
+    rows = conn.execute("SELECT * FROM packages ORDER BY created_at DESC").fetchall()
+    items = [
+        {
+            "id": r["id"],
+            "name": r["name"],
+            "code": r["code"],
+            "price": r["price"],
+            "description": r["description"],
+            "enabled": bool(r["enabled"]),
+            "created_at": r["created_at"],
+        }
+        for r in rows
+    ]
+    return jsonify({"success": True, "packages": items})
+
+
+@bp.route("/api/packages", methods=["POST"])
+@admin_required
+def packages_add():
+    body = request.get_json(silent=True) or {}
+    name = (body.get("name") or "").strip()
+    code = (body.get("code") or "").strip().upper().replace(" ", "")
+    price = body.get("price", 20000)
+    description = (body.get("description") or "").strip()
+    if not name or not code:
+        return jsonify({"success": False, "error": "Tên gói và mã gói là bắt buộc"}), 400
+    try:
+        price = int(price)
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "error": "Giá không hợp lệ"}), 400
+
+    conn = db.get_conn()
+    existing = conn.execute("SELECT 1 FROM packages WHERE code=?", (code,)).fetchone()
+    if existing:
+        return jsonify({"success": False, "error": f"Mã gói '{code}' đã tồn tại"}), 409
+    conn.execute(
+        "INSERT INTO packages (name, code, price, description, enabled, created_at) VALUES (?,?,?,?,1,?)",
+        (name, code, price, description, time.time())
+    )
+    return jsonify({"success": True})
+
+
+@bp.route("/api/packages/<int:pkg_id>", methods=["PUT"])
+@admin_required
+def packages_update(pkg_id):
+    body = request.get_json(silent=True) or {}
+    conn = db.get_conn()
+    row = conn.execute("SELECT * FROM packages WHERE id=?", (pkg_id,)).fetchone()
+    if not row:
+        return jsonify({"success": False, "error": "Không tìm thấy gói"}), 404
+
+    name = (body.get("name") or "").strip() or row["name"]
+    code = (body.get("code") or "").strip().upper().replace(" ", "") or row["code"]
+    price = body.get("price", row["price"])
+    description = body.get("description", row["description"])
+    enabled = body.get("enabled", row["enabled"])
+
+    try:
+        price = int(price)
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "error": "Giá không hợp lệ"}), 400
+
+    # Check code uniqueness (exclude self)
+    dup = conn.execute("SELECT 1 FROM packages WHERE code=? AND id!=?", (code, pkg_id)).fetchone()
+    if dup:
+        return jsonify({"success": False, "error": f"Mã gói '{code}' đã tồn tại"}), 409
+
+    conn.execute(
+        "UPDATE packages SET name=?, code=?, price=?, description=?, enabled=? WHERE id=?",
+        (name, code, price, description, 1 if enabled else 0, pkg_id)
+    )
+    return jsonify({"success": True})
+
+
+@bp.route("/api/packages/<int:pkg_id>", methods=["DELETE"])
+@admin_required
+def packages_delete(pkg_id):
+    conn = db.get_conn()
+    conn.execute("DELETE FROM packages WHERE id=?", (pkg_id,))
+    return jsonify({"success": True})
+
+
+# ─── COUPONS (Mã giảm giá) ───────────────────────────────────────────────────
+
+@bp.route("/api/coupons", methods=["GET"])
+@admin_required
+def coupons_list():
+    conn = db.get_conn()
+    rows = conn.execute("SELECT * FROM coupons ORDER BY created_at DESC").fetchall()
+    items = [
+        {
+            "id": r["id"],
+            "code": r["code"],
+            "discount_percent": r["discount_percent"],
+            "max_uses": r["max_uses"],
+            "used_count": r["used_count"],
+            "enabled": bool(r["enabled"]),
+            "created_at": r["created_at"],
+        }
+        for r in rows
+    ]
+    return jsonify({"success": True, "coupons": items})
+
+
+@bp.route("/api/coupons", methods=["POST"])
+@admin_required
+def coupons_add():
+    body = request.get_json(silent=True) or {}
+    code = (body.get("code") or "").strip().upper().replace(" ", "")
+    discount_percent = body.get("discount_percent", 0)
+    max_uses = body.get("max_uses")
+
+    if not code:
+        return jsonify({"success": False, "error": "Mã giảm giá là bắt buộc"}), 400
+    try:
+        discount_percent = int(discount_percent)
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "error": "Phần trăm giảm giá không hợp lệ"}), 400
+    if discount_percent < 1 or discount_percent > 100:
+        return jsonify({"success": False, "error": "Phần trăm phải từ 1-100"}), 400
+
+    if max_uses is not None and max_uses != "":
+        try:
+            max_uses = int(max_uses)
+        except (ValueError, TypeError):
+            max_uses = None
+    else:
+        max_uses = None
+
+    conn = db.get_conn()
+    existing = conn.execute("SELECT 1 FROM coupons WHERE code=?", (code,)).fetchone()
+    if existing:
+        return jsonify({"success": False, "error": f"Mã '{code}' đã tồn tại"}), 409
+
+    conn.execute(
+        "INSERT INTO coupons (code, discount_percent, max_uses, used_count, enabled, created_at) VALUES (?,?,?,0,1,?)",
+        (code, discount_percent, max_uses, time.time())
+    )
+    return jsonify({"success": True})
+
+
+@bp.route("/api/coupons/<int:coupon_id>", methods=["PUT"])
+@admin_required
+def coupons_update(coupon_id):
+    body = request.get_json(silent=True) or {}
+    conn = db.get_conn()
+    row = conn.execute("SELECT * FROM coupons WHERE id=?", (coupon_id,)).fetchone()
+    if not row:
+        return jsonify({"success": False, "error": "Không tìm thấy mã"}), 404
+
+    code = (body.get("code") or "").strip().upper().replace(" ", "") or row["code"]
+    discount_percent = body.get("discount_percent", row["discount_percent"])
+    max_uses = body.get("max_uses", row["max_uses"])
+    enabled = body.get("enabled", row["enabled"])
+
+    try:
+        discount_percent = int(discount_percent)
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "error": "Phần trăm giảm giá không hợp lệ"}), 400
+    if discount_percent < 1 or discount_percent > 100:
+        return jsonify({"success": False, "error": "Phần trăm phải từ 1-100"}), 400
+
+    if max_uses is not None and max_uses != "":
+        try:
+            max_uses = int(max_uses)
+        except (ValueError, TypeError):
+            max_uses = None
+    else:
+        max_uses = None
+
+    # Check code uniqueness (exclude self)
+    dup = conn.execute("SELECT 1 FROM coupons WHERE code=? AND id!=?", (code, coupon_id)).fetchone()
+    if dup:
+        return jsonify({"success": False, "error": f"Mã '{code}' đã tồn tại"}), 409
+
+    conn.execute(
+        "UPDATE coupons SET code=?, discount_percent=?, max_uses=?, enabled=? WHERE id=?",
+        (code, discount_percent, max_uses, 1 if enabled else 0, coupon_id)
+    )
+    return jsonify({"success": True})
+
+
+@bp.route("/api/coupons/<int:coupon_id>", methods=["DELETE"])
+@admin_required
+def coupons_delete(coupon_id):
+    conn = db.get_conn()
+    conn.execute("DELETE FROM coupons WHERE id=?", (coupon_id,))
+    return jsonify({"success": True})
+
+
+# ─── BANK HISTORY VIEWER ──────────────────────────────────────────────────────
+
 @bp.route("/api/bank-history", methods=["GET"])
 @admin_required
 def bank_history():
