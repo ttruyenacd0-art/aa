@@ -680,6 +680,8 @@ def admin_packages_update(pkg_id):
 @admin_required
 def admin_packages_delete(pkg_id):
     conn = db.get_conn()
+    # Remove related activations first (foreign key constraint)
+    conn.execute("DELETE FROM gold_activations WHERE package_id=?", (pkg_id,))
     conn.execute("DELETE FROM pricing_packages WHERE id=?", (pkg_id,))
     return jsonify({"success": True})
 
