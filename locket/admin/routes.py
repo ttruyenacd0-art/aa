@@ -26,14 +26,13 @@ def login():
     password = (request.form.get("password") or "").strip()
     if not check_credentials(username, password):
         return render_template("admin_login.html", error="Invalid username or password"), 401
-    session.clear()
     session["admin"] = True
     return redirect("/admin/")
 
 
 @bp.route("/logout", methods=["POST"])
 def logout():
-    session.clear()
+    session.pop("admin", None)
     return redirect("/admin/login")
 
 
@@ -517,6 +516,25 @@ def set_payment_settings():
     try:
         saved = site_settings.set_payment(body)
         return jsonify({"success": True, "payment": saved})
+    except (ValueError, TypeError) as e:
+        return jsonify({"success": False, "msg": str(e)}), 400
+
+
+# ─── PACKAGES SETTINGS ────────────────────────────────────────────────────────
+
+@bp.route("/api/packages", methods=["GET"])
+@admin_required
+def get_packages():
+    return jsonify({"success": True, **site_settings.get_packages()})
+
+
+@bp.route("/api/packages", methods=["PUT"])
+@admin_required
+def set_packages():
+    body = request.json or {}
+    try:
+        saved = site_settings.set_packages(body)
+        return jsonify({"success": True, **saved})
     except (ValueError, TypeError) as e:
         return jsonify({"success": False, "msg": str(e)}), 400
 

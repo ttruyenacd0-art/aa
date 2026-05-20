@@ -24,6 +24,7 @@ LAYOUT_KEY = "layout"
 
 PAYMENT_KEY = "payment_settings"
 TELEGRAM_KEY = "telegram_settings"
+PACKAGES_KEY = "packages_settings"
 THEMES = ("gold", "aurora", "sunset", "mono")
 LAYOUTS = ("stacked", "split", "spotlight")
 
@@ -39,6 +40,14 @@ _DEFAULTS = {
     TELEGRAM_KEY: {
         "bot_token": "",
         "chat_id": "",
+    },
+    PACKAGES_KEY: {
+        "packages": [
+            {"id": "free", "name": "Dùng thử", "price": 0, "description": "Trải nghiệm Gold 1 ngày"},
+            {"id": "basic", "name": "Basic", "price": 19000, "description": "Gold 7 ngày"},
+            {"id": "standard", "name": "Standard", "price": 30000, "description": "Gold 30 ngày"},
+            {"id": "premium", "name": "Premium", "price": 35000, "description": "Gold vĩnh viễn"},
+        ],
     },
     PAYMENT_KEY: {
         "bank_type": "acb",
@@ -206,6 +215,7 @@ def set_payment(value):
 def public_view():
     """Trimmed payload safe to expose to anonymous clients."""
     pay = get_payment()
+    pkgs = get_packages()
     return {
         "popup": get_popup(),
         "maintenance": get_maintenance(),
@@ -213,4 +223,34 @@ def public_view():
         "layout": get_layout(),
         "payment_amount": int(pay.get("amount", 20000)),
         "bank_name": pay.get("bank_name", "ACB"),
+        "packages": pkgs.get("packages", []),
     }
+
+
+def get_packages():
+    with _lock:
+        return _read(PACKAGES_KEY)
+
+
+def set_packages(value):
+    """Lưu danh sách gói. value phải có key 'packages' là list."""
+    packages = value.get("packages") if isinstance(value, dict) else None
+    if not isinstance(packages, list):
+        raise ValueError("packages phải là một danh sách")
+    # Validate từng package
+    cleaned = []
+    for pkg in packages:
+        if not isinstance(pkg, dict):
+            continue
+        pid = str(pkg.get("id", "")).strip()
+        name = str(pkg.get("name", "")).strip()
+        price = int(pkg.get("price", 0))
+        desc = str(pkg.get("description", "")).strip()
+        if not pid or not name:
+            continue
+        cleaned.append({"id": pid, "name": name, "price": price, "description": desc})
+    if not cleaned:
+        raise ValueError("Phải có ít nhất 1 gói")
+    with _lock:
+        _write(PACKAGES_KEY, {"packages": cleaned})
+    return get_packages()
