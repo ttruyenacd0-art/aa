@@ -278,6 +278,11 @@ def payment_create():
     data = request.json or {}
     username = (data.get("username") or "").strip()
     package_id = data.get("package_id")
+    if package_id is not None:
+        try:
+            package_id = int(package_id)
+        except (ValueError, TypeError):
+            package_id = None
     coupon_code = (data.get("coupon_code") or "").strip().upper().replace(" ", "")
 
     if not username:
@@ -287,32 +292,35 @@ def payment_create():
     conn = db.get_conn()
 
     # ─── UPGRADE-ONLY CHECK: Không được mua gói rẻ hơn gói hiện tại ───────────
+    # (Bỏ qua check nếu gói mới có giá 0đ — gói miễn phí luôn được mua)
     user_id = session.get("user_id")
     if user_id and package_id:
-        # Tìm gói hiện tại của user
-        current_purchase = conn.execute(
-            "SELECT package_id FROM gold_purchases WHERE user_id=? AND package_id IS NOT NULL ORDER BY purchased_at DESC LIMIT 1",
-            (user_id,)
+        # Kiểm tra giá gói mới
+        new_pkg_check = conn.execute(
+            "SELECT price FROM pricing_packages WHERE id=?", (package_id,)
         ).fetchone()
-        if not current_purchase:
+        # Chỉ check upgrade nếu gói mới có giá > 0 (gói 0đ cho phép mua luôn)
+        if new_pkg_check and new_pkg_check["price"] > 0:
+            # Tìm gói hiện tại của user
             current_purchase = conn.execute(
-                "SELECT package_id FROM gold_activations WHERE user_id=? ORDER BY activated_at DESC LIMIT 1",
+                "SELECT package_id FROM gold_purchases WHERE user_id=? AND package_id IS NOT NULL ORDER BY purchased_at DESC LIMIT 1",
                 (user_id,)
             ).fetchone()
-        if current_purchase and current_purchase["package_id"]:
-            current_pkg = conn.execute(
-                "SELECT price, name FROM pricing_packages WHERE id=?",
-                (current_purchase["package_id"],)
-            ).fetchone()
-            new_pkg = conn.execute(
-                "SELECT price, name FROM pricing_packages WHERE id=?",
-                (package_id,)
-            ).fetchone()
-            if current_pkg and new_pkg and new_pkg["price"] <= current_pkg["price"]:
-                return jsonify({
-                    "success": False,
-                    "msg": f"Bạn đang sử dụng gói \"{current_pkg['name']}\" ({current_pkg['price']:,}đ). Chỉ được nâng cấp lên gói cao hơn."
-                }), 400
+            if not current_purchase:
+                current_purchase = conn.execute(
+                    "SELECT package_id FROM gold_activations WHERE user_id=? ORDER BY activated_at DESC LIMIT 1",
+                    (user_id,)
+                ).fetchone()
+            if current_purchase and current_purchase["package_id"]:
+                current_pkg = conn.execute(
+                    "SELECT price, name FROM pricing_packages WHERE id=?",
+                    (current_purchase["package_id"],)
+                ).fetchone()
+                if current_pkg and new_pkg_check["price"] <= current_pkg["price"]:
+                    return jsonify({
+                        "success": False,
+                        "msg": f"Bạn đang sử dụng gói \"{current_pkg['name']}\" ({current_pkg['price']:,}đ). Chỉ được nâng cấp lên gói cao hơn."
+                    }), 400
 
     # Lấy giá từ gói nếu có package_id, ngược lại dùng giá mặc định
     cfg = _get_payment_cfg()

@@ -420,25 +420,27 @@ async function applyCoupon(){
     }catch(e){msg.style.color='#fca5a5';msg.textContent='Lỗi kết nối';}
 }
 async function doBuyPackage(){
-    if(!selectedPkgId)return;const btn=document.getElementById('buyPayBtn');btn.disabled=true;btn.textContent='Đang tạo thanh toán...';
-    const user=await fetch('/api/auth/me').then(r=>r.json());
-    if(!user.logged_in){showMsg('buyPayMsg','Vui lòng đăng nhập','error');btn.disabled=false;btn.textContent='Thanh toán';return;}
-    try{const r=await fetch('/api/payment/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:user.username,package_id:selectedPkgId,coupon_code:appliedCouponCode})});
+    if(!selectedPkgId){showMsg('buyPayMsg','Vui lòng chọn gói','error');return;}
+    const btn=document.getElementById('buyPayBtn');btn.disabled=true;btn.textContent='Đang xử lý...';
+    try{
+        const user=await fetch('/api/auth/me',{credentials:'same-origin'}).then(r=>r.json());
+        if(!user.logged_in){showMsg('buyPayMsg','Vui lòng đăng nhập','error');btn.disabled=false;btn.textContent='Thanh toán';return;}
+        const r=await fetch('/api/payment/create',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({username:user.username,package_id:selectedPkgId,coupon_code:appliedCouponCode})});
         const d=await r.json();
-        if(!d.success){showMsg('buyPayMsg',d.msg||'Lỗi','error');btn.disabled=false;btn.textContent='Thanh toán';return;}
+        if(!d.success){showMsg('buyPayMsg',d.msg||'Lỗi tạo thanh toán','error');btn.disabled=false;btn.textContent=selectedPkgPrice===0?'Nhận gói miễn phí':'Thanh toán';return;}
         // Gói miễn phí (0đ) → tự động xác nhận, không cần chuyển khoản
         if(d.free){
             document.getElementById('buyPackageSection').innerHTML=`<div style="text-align:center;padding:24px 0">
                 <svg width="56" height="56" fill="none" stroke="#4ade80" stroke-width="2" viewBox="0 0 24 24" style="margin-bottom:16px"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                 <h3 style="color:#4ade80;font-size:1.2rem;margin-bottom:8px">Mua gói thành công!</h3>
-                <p style="color:#a1a1aa;font-size:.9rem">Gói <strong style="color:#fbbf24">${d.package_name}</strong> đã được kích hoạt.</p>
+                <p style="color:#a1a1aa;font-size:.9rem">Gói <strong style="color:#fbbf24">${d.package_name||''}</strong> đã được kích hoạt.</p>
                 <p style="color:#71717a;font-size:.82rem;margin-top:8px">Đang tải lại trang...</p>
             </div>`;
             setTimeout(()=>location.reload(),2000);
             return;
         }
         showPaymentQR(d);
-    }catch(e){showMsg('buyPayMsg','Lỗi kết nối','error');btn.disabled=false;btn.textContent='Thanh toán';}
+    }catch(e){showMsg('buyPayMsg','Lỗi kết nối: '+e.message,'error');btn.disabled=false;btn.textContent=selectedPkgPrice===0?'Nhận gói miễn phí':'Thanh toán';}
 }
 </script>
 
