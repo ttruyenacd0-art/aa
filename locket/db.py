@@ -122,7 +122,8 @@ CREATE TABLE IF NOT EXISTS payments (
     created_at REAL NOT NULL,
     confirmed_at REAL,
     transaction_id INTEGER,
-    min_tx_id INTEGER NOT NULL DEFAULT 0
+    min_tx_id INTEGER NOT NULL DEFAULT 0,
+    package_id TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_payments_username ON payments(username);
@@ -142,9 +143,12 @@ CREATE TABLE IF NOT EXISTS gold_purchases (
     user_id INTEGER NOT NULL REFERENCES user_accounts(id),
     locket_username TEXT NOT NULL,
     payment_id TEXT,
+    package_id TEXT NOT NULL DEFAULT '',
+    package_price INTEGER NOT NULL DEFAULT 0,
     purchased_at REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_gold_purchases_user ON gold_purchases(user_id);
+CREATE INDEX IF NOT EXISTS idx_gold_purchases_locket ON gold_purchases(locket_username);
 """
 
 
@@ -177,6 +181,17 @@ def _migrate_schema_columns(conn):
     if "min_tx_id" not in cols:
         conn.execute("ALTER TABLE payments ADD COLUMN min_tx_id INTEGER NOT NULL DEFAULT 0")
         print("db: migrated payments.min_tx_id column")
+    if "package_id" not in cols:
+        conn.execute("ALTER TABLE payments ADD COLUMN package_id TEXT NOT NULL DEFAULT ''")
+        print("db: migrated payments.package_id column")
+
+    gp_cols = {r[1] for r in conn.execute("PRAGMA table_info(gold_purchases)").fetchall()}
+    if "package_id" not in gp_cols:
+        conn.execute("ALTER TABLE gold_purchases ADD COLUMN package_id TEXT NOT NULL DEFAULT ''")
+        print("db: migrated gold_purchases.package_id column")
+    if "package_price" not in gp_cols:
+        conn.execute("ALTER TABLE gold_purchases ADD COLUMN package_price INTEGER NOT NULL DEFAULT 0")
+        print("db: migrated gold_purchases.package_price column")
 
 
 def _migrate_legacy_files(conn):

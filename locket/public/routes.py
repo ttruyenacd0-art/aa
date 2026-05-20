@@ -252,8 +252,41 @@ def payment_create():
     """Tạo payment mới, trả về payment_id và thông tin chuyển khoản."""
     data = request.json or {}
     username = (data.get("username") or "").strip()
+    package_id = (data.get("package_id") or "").strip()
     if not username:
         return jsonify({"success": False, "msg": "Username is required"}), 400
+    if not package_id:
+        return jsonify({"success": False, "msg": "package_id is required"}), 400
+
+    # Tìm package từ settings
+    pkgs_cfg = site_settings.get_packages()
+    packages = pkgs_cfg.get("packages", [])
+    selected_pkg = None
+    for pkg in packages:
+        if pkg.get("id") == package_id:
+            selected_pkg = pkg
+            break
+    if not selected_pkg:
+        return jsonify({"success": False, "msg": "Gói không tồn tại"}), 400
+
+    PAYMENT_AMOUNT = int(selected_pkg.get("price", 0))
+
+    # ─── Kiểm tra upgrade-only: không cho mua gói rẻ hơn hoặc bằng gói đã mua ───
+    user_id = session.get("user_id")
+    if user_id:
+        conn = db.get_conn()
+        # Tìm gói đắt nhất đã mua cho username locket này
+        max_purchase = conn.execute(
+            "SELECT MAX(package_price) as max_price FROM gold_purchases WHERE user_id=? AND locket_username=?",
+            (user_id, username)
+        ).fetchone()
+        if max_purchase and max_purchase["max_price"] is not None:
+            current_max = int(max_purchase["max_price"])
+            if current_max > 0 and PAYMENT_AMOUNT <= current_max:
+                return jsonify({
+                    "success": False,
+                    "msg": f"Bạn đã mua gói {current_max:,}đ. Chỉ được nâng cấp lên gói cao hơn."
+                }), 400
 
     now = time.time()
     conn = db.get_conn()
@@ -264,13 +297,38 @@ def payment_create():
         (username,)
     )
 
+    # ─── Gói miễn phí (0đ): bỏ qua thanh toán, xác nhận ngay ───
+    if PAYMENT_AMOUNT == 0:
+        payment_id = str(uuid.uuid4())[:8].upper()
+        conn.execute(
+            "INSERT INTO payments (payment_id, username, amount, status, created_at, confirmed_at, min_tx_id, package_id) VALUES (?,?,?,?,?,?,?,?)",
+            (payment_id, username, 0, "confirmed", now, now, 0, package_id)
+        )
+        # Ghi gold_purchases
+        if user_id:
+            dup = conn.execute(
+                "SELECT 1 FROM gold_purchases WHERE user_id=? AND locket_username=? AND payment_id=?",
+                (user_id, username, payment_id)
+            ).fetchone()
+            if not dup:
+                conn.execute(
+                    "INSERT INTO gold_purchases (user_id, locket_username, payment_id, package_id, package_price, purchased_at) VALUES (?,?,?,?,?,?)",
+                    (user_id, username, payment_id, package_id, 0, now)
+                )
+        return jsonify({
+            "success": True,
+            "payment_id": payment_id,
+            "amount": 0,
+            "status": "confirmed",
+            "free": True,
+            "username": username,
+        })
+
     cfg = _get_payment_cfg()
-    PAYMENT_AMOUNT = int(cfg.get("amount", 20000))
     bank_type = cfg.get("bank_type", "acb").lower()
     bank_api_url = cfg.get("mb_api_url", "") if bank_type == "mb" else cfg.get("acb_api_url", "")
 
     # Lấy max transactionID hiện tại để làm mốc — chỉ chấp nhận tx mới hơn
-    # ACB: max(int ID), MB: hash của ID đầu tiên trong list (mới nhất)
     min_tx_id = 0
     try:
         snap_resp = _requests.get(bank_api_url, timeout=8)
@@ -278,17 +336,16 @@ def payment_create():
         existing_txs = snap_resp.json().get("transactions", [])
         if existing_txs:
             if bank_type == "mb":
-                # MB trả danh sách theo thứ tự mới → cũ; snapshot hash của tx mới nhất
                 min_tx_id = _normalize_tx_id(existing_txs[0].get("transactionID"))
             else:
                 min_tx_id = max(_normalize_tx_id(t.get("transactionID")) for t in existing_txs)
     except Exception:
-        min_tx_id = 0  # fallback: không lọc được, nhưng vẫn tạo payment
+        min_tx_id = 0
 
     payment_id = str(uuid.uuid4())[:8].upper()
     conn.execute(
-        "INSERT INTO payments (payment_id, username, amount, status, created_at, min_tx_id) VALUES (?,?,?,?,?,?)",
-        (payment_id, username, PAYMENT_AMOUNT, "pending", now, min_tx_id)
+        "INSERT INTO payments (payment_id, username, amount, status, created_at, min_tx_id, package_id) VALUES (?,?,?,?,?,?,?)",
+        (payment_id, username, PAYMENT_AMOUNT, "pending", now, min_tx_id, package_id)
     )
 
     return jsonify({
@@ -300,8 +357,8 @@ def payment_create():
         "account_name": cfg.get("account_name", ""),
         "description": f"{cfg.get('description_prefix', 'LOCKET')} {username}",
         "expire_at": int(now + PAYMENT_EXPIRE_SECONDS),
+        "free": False,
     })
-
 
 
 # ─── PAYMENT HELPERS ──────────────────────────────────────────────────────────
@@ -408,6 +465,13 @@ def _find_matching_tx(transactions, username_lower, min_tx_id, conn, min_amount=
 
 def _confirm_payment_and_save(conn, payment_id, username, tx_id, now):
     """Xác nhận payment và ghi gold_purchases nếu user đang login."""
+    # Lấy thông tin payment (package_id, amount)
+    pay_row = conn.execute(
+        "SELECT package_id, amount FROM payments WHERE payment_id=?", (payment_id,)
+    ).fetchone()
+    package_id = pay_row["package_id"] if pay_row else ""
+    package_price = pay_row["amount"] if pay_row else 0
+
     conn.execute(
         "UPDATE payments SET status='confirmed', confirmed_at=?, transaction_id=? WHERE payment_id=?",
         (now, tx_id, payment_id)
@@ -421,15 +485,15 @@ def _confirm_payment_and_save(conn, payment_id, username, tx_id, now):
         ).fetchone()
         if not dup:
             conn.execute(
-                "INSERT INTO gold_purchases (user_id, locket_username, payment_id, purchased_at) VALUES (?,?,?,?)",
-                (user_id, username, payment_id, now)
+                "INSERT INTO gold_purchases (user_id, locket_username, payment_id, package_id, package_price, purchased_at) VALUES (?,?,?,?,?,?)",
+                (user_id, username, payment_id, package_id, package_price, now)
             )
     # Gửi thông báo Telegram
     cfg = _get_payment_cfg()
     import threading
     threading.Thread(
         target=send_payment_notification,
-        args=(username, int(cfg.get("amount", 20000)), payment_id, account_user),
+        args=(username, package_price, payment_id, account_user),
         daemon=True
     ).start()
 
@@ -462,7 +526,7 @@ def payment_check():
     except Exception as e:
         return jsonify({"success": True, "status": "pending", "msg": f"Bank API error: {e}"})
 
-    tx_id = _find_matching_tx(transactions, row["username"].lower(), _row_get(row, "min_tx_id", 0), conn, int(_cfg.get("amount", 20000)), bank_type)
+    tx_id = _find_matching_tx(transactions, row["username"].lower(), _row_get(row, "min_tx_id", 0), conn, int(row["amount"]), bank_type)
     if tx_id:
         _confirm_payment_and_save(conn, payment_id, row["username"], tx_id, now)
         return jsonify({"success": True, "status": "confirmed", "username": row["username"]})
@@ -548,22 +612,32 @@ def auth_me():
         "SELECT username FROM user_accounts WHERE id=?", (user_id,)
     ).fetchone()
     if not user:
-        session.clear()
+        session.pop("user_id", None)
+        session.pop("user_name", None)
         return jsonify({"success": False, "logged_in": False})
     purchases = conn.execute(
-        "SELECT locket_username, purchased_at FROM gold_purchases WHERE user_id=? ORDER BY purchased_at DESC",
+        "SELECT locket_username, package_id, package_price, purchased_at FROM gold_purchases WHERE user_id=? ORDER BY purchased_at DESC",
         (user_id,)
     ).fetchall()
     items = [
         {"locket_username": r["locket_username"],
+         "package_id": r["package_id"] if r["package_id"] else "",
+         "package_price": r["package_price"] if r["package_price"] else 0,
          "purchased_at": r["purchased_at"]}
         for r in purchases
     ]
+    # Tính max package price cho mỗi locket_username (để frontend check upgrade-only)
+    max_prices = {}
+    for item in items:
+        lu = item["locket_username"]
+        if lu not in max_prices or item["package_price"] > max_prices[lu]:
+            max_prices[lu] = item["package_price"]
     return jsonify({
         "success": True,
         "logged_in": True,
         "username": user["username"],
         "gold_history": items,
+        "max_prices": max_prices,
     })
 
 
@@ -598,7 +672,7 @@ def payment_confirm_now():
     except Exception as e:
         return jsonify({"success": False, "msg": f"Không thể kết nối ngân hàng: {e}"}), 502
 
-    tx_id = _find_matching_tx(transactions, row["username"].lower(), _row_get(row, "min_tx_id", 0), conn, int(_cfg2.get("amount", 20000)), bank_type2)
+    tx_id = _find_matching_tx(transactions, row["username"].lower(), _row_get(row, "min_tx_id", 0), conn, int(row["amount"]), bank_type2)
     if tx_id:
         _confirm_payment_and_save(conn, payment_id, row["username"], tx_id, now)
         return jsonify({"success": True, "status": "confirmed", "username": row["username"]})
@@ -723,8 +797,8 @@ def _link_pending_payments_to_user(conn, user_id: int, payment_ids: list):
         ).fetchone()
         if not dup:
             conn.execute(
-                "INSERT INTO gold_purchases (user_id, locket_username, payment_id, purchased_at) VALUES (?,?,?,?)",
-                (user_id, row["username"], pid, now)
+                "INSERT INTO gold_purchases (user_id, locket_username, payment_id, package_id, package_price, purchased_at) VALUES (?,?,?,?,?,?)",
+                (user_id, row["username"], pid, _row_get(row, "package_id", ""), int(row["amount"]), now)
             )
             linked += 1
     return linked

@@ -1398,6 +1398,37 @@
             const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'No name';
             const avatarUrl = userData.profile_picture_url || 'https://play-lh.googleusercontent.com/eRZLg00mAQGayCrFjDBklPIpW3qFHcmUs8PUQA4z7hVe-cDKMcRqecVHONAIexJGJZM';
 
+            // Lấy max price đã mua cho username này (upgrade-only check)
+            const locketUsername = userData.username;
+            const maxPrice = (_authState.max_prices && _authState.max_prices[locketUsername]) || 0;
+
+            // Lọc packages: chỉ hiện gói có giá > maxPrice (upgrade-only)
+            const availablePackages = _packages.filter(pkg => pkg.price > maxPrice);
+
+            let packagesHtml = '';
+            if (availablePackages.length === 0 && maxPrice > 0) {
+                packagesHtml = `<p style="color:#4ade80;font-size:.9rem;margin-top:1rem;text-align:center">✅ Bạn đã mua gói cao nhất cho @${locketUsername}!</p>`;
+            } else if (availablePackages.length === 0) {
+                packagesHtml = `<p style="color:#888;font-size:.9rem;margin-top:1rem;text-align:center">Chưa có gói nào được cấu hình.</p>`;
+            } else {
+                packagesHtml = `
+                <div style="margin-top:1rem;display:flex;flex-direction:column;gap:8px" id="pkgList">
+                    ${availablePackages.map((pkg, i) => `
+                    <label style="display:flex;align-items:center;gap:10px;padding:12px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid ${i===0?'var(--gold)':'rgba(255,255,255,.1)'};cursor:pointer;transition:border-color .2s" class="pkg-option" data-pkgid="${pkg.id}">
+                        <input type="radio" name="package" value="${pkg.id}" data-price="${pkg.price}" ${i===0?'checked':''} style="accent-color:var(--gold);width:18px;height:18px">
+                        <div style="flex:1">
+                            <div style="font-weight:600;color:#fff;font-size:.95rem">${pkg.name}</div>
+                            <div style="font-size:.8rem;color:#888">${pkg.description}</div>
+                        </div>
+                        <div style="font-weight:700;color:var(--gold);font-size:1rem">${pkg.price === 0 ? 'Miễn phí' : pkg.price.toLocaleString('vi-VN') + 'đ'}</div>
+                    </label>`).join('')}
+                </div>
+                ${maxPrice > 0 ? `<p style="font-size:.78rem;color:#888;margin-top:6px;text-align:center">⬆️ Bạn đã có gói ${maxPrice.toLocaleString('vi-VN')}đ — chỉ hiện gói nâng cấp</p>` : ''}`;
+            }
+
+            const hasPackages = availablePackages.length > 0;
+            const firstIsFree = hasPackages && availablePackages[0].price === 0;
+
             Swal.fire({
                 title: 'User Information',
                 html: `
@@ -1411,14 +1442,61 @@
                     </div>
                     <div class="user-uid">UID: ${userData.uid}</div>
                 </div>
-                <p style="margin-top:1rem;color:#888;font-size:.9rem">Phí unlock Gold: <strong style="color:var(--gold)">${Number(_paymentAmount).toLocaleString('vi-VN')}đ</strong> qua chuyển khoản ${_bankName}.</p>`,
+                ${packagesHtml}`,
                 ...swalGlassParams,
                 showCancelButton: true,
-                confirmButtonText: 'Thanh toán',
-                cancelButtonText: 'Huỷ'
+                confirmButtonText: hasPackages ? 'Tiếp tục' : 'Đóng',
+                cancelButtonText: 'Huỷ',
+                didOpen: () => {
+                    // Xử lý click chọn package
+                    document.querySelectorAll('.pkg-option').forEach(label => {
+                        label.addEventListener('click', () => {
+                            document.querySelectorAll('.pkg-option').forEach(el => el.style.borderColor = 'rgba(255,255,255,.1)');
+                            label.style.borderColor = 'var(--gold)';
+                            label.querySelector('input').checked = true;
+                        });
+                    });
+                },
+                preConfirm: () => {
+                    if (!hasPackages) return null;
+                    const selected = document.querySelector('input[name="package"]:checked');
+                    if (!selected) { Swal.showValidationMessage('Vui lòng chọn một gói'); return false; }
+                    return { package_id: selected.value, price: parseInt(selected.dataset.price) };
+                }
             }).then((result) => {
-                if (result.isConfirmed) showPaymentPopup(userData.username);
+                if (result.isConfirmed && result.value) {
+                    const { package_id, price } = result.value;
+                    if (price === 0) {
+                        // Gói miễn phí → mua luôn không cần thanh toán
+                        purchaseFreePackage(userData.username, package_id);
+                    } else {
+                        showPaymentPopup(userData.username, package_id);
+                    }
+                }
             });
+        }
+
+        async function purchaseFreePackage(username, package_id) {
+            Swal.fire({ title: '⏳ Đang xử lý...', allowOutsideClick: false, ...swalGlassParams, didOpen: () => Swal.showLoading() });
+            try {
+                const r = await fetch('/api/payment/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, package_id }),
+                });
+                const data = await r.json();
+                if (!data.success) {
+                    Swal.fire({ icon: 'error', title: 'Lỗi', text: data.msg, ...swalGlassParams, confirmButtonText: 'OK' });
+                    return;
+                }
+                // Gói free → confirmed ngay → vào queue
+                Swal.close();
+                trackConfirmedPayment(data.payment_id);
+                await refreshAuthState();
+                restorePurchase(username);
+            } catch(e) {
+                Swal.fire({ icon: 'error', title: 'Lỗi kết nối', text: 'Không thể kết nối server.', ...swalGlassParams, confirmButtonText: 'OK' });
+            }
         }
 
         let paymentPollInterval = null;
@@ -1426,14 +1504,14 @@
         let currentPaymentId = null;
         let currentPaymentUsername = null;
 
-        async function showPaymentPopup(username) {
+        async function showPaymentPopup(username, package_id) {
             // Tạo payment
             let paymentData;
             try {
                 const r = await fetch('/api/payment/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username }),
+                    body: JSON.stringify({ username, package_id }),
                 });
                 paymentData = await r.json();
             } catch(e) {
@@ -1766,6 +1844,10 @@
                     _paymentAmount = data.payment_amount;
                     _bankName = data.bank_name || 'ACB';
                 }
+                // Load packages
+                if (data.packages && Array.isArray(data.packages)) {
+                    _packages = data.packages;
+                }
                 const p = data.popup || {};
                 if (p.enabled && p.message) {
                     Swal.fire({
@@ -1976,9 +2058,10 @@
         // ─── PAYMENT CONFIG (từ admin settings) ──────────────────────────────
         let _paymentAmount = 20000;
         let _bankName = 'ACB';
+        let _packages = [];
 
         // ─── AUTH ─────────────────────────────────────────────────────────────
-        let _authState = { logged_in: false, username: null, gold_history: [] };
+        let _authState = { logged_in: false, username: null, gold_history: [], max_prices: {} };
 
         // Lưu các payment_id đã confirmed trong session (để link sau khi đăng nhập)
         const _confirmedPayments = new Set();
@@ -2101,7 +2184,7 @@
                     <li>
                         <div>
                             <div class="lk-user">@${h.locket_username}</div>
-                            <div class="lk-date">${new Date(h.purchased_at * 1000).toLocaleString('vi-VN')}</div>
+                            <div class="lk-date">${new Date(h.purchased_at * 1000).toLocaleString('vi-VN')}${h.package_price ? ' · ' + Number(h.package_price).toLocaleString('vi-VN') + 'đ' : ''}</div>
                         </div>
                         <button onclick="reactivateGold('${h.locket_username}')"
                             style="border:none;background:linear-gradient(135deg,#ffd700,#ffaa00);color:#000;font-weight:700;font-size:.75rem;padding:5px 10px;border-radius:8px;cursor:pointer;white-space:nowrap;flex-shrink:0">
