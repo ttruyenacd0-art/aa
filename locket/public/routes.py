@@ -286,6 +286,34 @@ def payment_create():
     now = time.time()
     conn = db.get_conn()
 
+    # ─── UPGRADE-ONLY CHECK: Không được mua gói rẻ hơn gói hiện tại ───────────
+    user_id = session.get("user_id")
+    if user_id and package_id:
+        # Tìm gói hiện tại của user
+        current_purchase = conn.execute(
+            "SELECT package_id FROM gold_purchases WHERE user_id=? AND package_id IS NOT NULL ORDER BY purchased_at DESC LIMIT 1",
+            (user_id,)
+        ).fetchone()
+        if not current_purchase:
+            current_purchase = conn.execute(
+                "SELECT package_id FROM gold_activations WHERE user_id=? ORDER BY activated_at DESC LIMIT 1",
+                (user_id,)
+            ).fetchone()
+        if current_purchase and current_purchase["package_id"]:
+            current_pkg = conn.execute(
+                "SELECT price, name FROM pricing_packages WHERE id=?",
+                (current_purchase["package_id"],)
+            ).fetchone()
+            new_pkg = conn.execute(
+                "SELECT price, name FROM pricing_packages WHERE id=?",
+                (package_id,)
+            ).fetchone()
+            if current_pkg and new_pkg and new_pkg["price"] <= current_pkg["price"]:
+                return jsonify({
+                    "success": False,
+                    "msg": f"Bạn đang sử dụng gói \"{current_pkg['name']}\" ({current_pkg['price']:,}đ). Chỉ được nâng cấp lên gói cao hơn."
+                }), 400
+
     # Lấy giá từ gói nếu có package_id, ngược lại dùng giá mặc định
     cfg = _get_payment_cfg()
     pkg = None
@@ -325,6 +353,45 @@ def payment_create():
         (username,)
     )
 
+    # Tăng used_count cho coupon
+    if applied_coupon:
+        conn.execute("UPDATE coupons SET used_count = used_count + 1 WHERE code=?", (coupon_code,))
+
+    # ─── FREE PACKAGE (0đ): Xác nhận ngay, không cần chuyển khoản ─────────────
+    if final_amount == 0:
+        payment_id = str(uuid.uuid4())[:8].upper()
+        conn.execute(
+            "INSERT INTO payments (payment_id, username, amount, status, created_at, confirmed_at, min_tx_id, package_id, coupon_code, original_amount) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (payment_id, username, 0, "confirmed", now, now, 0, package_id, coupon_code, original_amount)
+        )
+        # Ghi gold_purchases nếu user đang login
+        if user_id and package_id:
+            # Xóa gói cũ
+            conn.execute(
+                "DELETE FROM gold_purchases WHERE user_id=? AND package_id IS NOT NULL AND package_id!=?",
+                (user_id, package_id)
+            )
+            dup = conn.execute(
+                "SELECT 1 FROM gold_purchases WHERE user_id=? AND payment_id=?",
+                (user_id, payment_id)
+            ).fetchone()
+            if not dup:
+                conn.execute(
+                    "INSERT INTO gold_purchases (user_id, locket_username, payment_id, package_id, purchased_at) VALUES (?,?,?,?,?)",
+                    (user_id, username, payment_id, package_id, now)
+                )
+        return jsonify({
+            "success": True,
+            "payment_id": payment_id,
+            "amount": 0,
+            "original_amount": original_amount,
+            "discount_percent": applied_coupon["discount_percent"] if applied_coupon else 0,
+            "package_name": pkg["name"] if pkg else "",
+            "status": "confirmed",
+            "free": True,
+        })
+
+    # ─── NORMAL PAYMENT: Tạo pending payment và trả QR ────────────────────────
     bank_type = cfg.get("bank_type", "acb").lower()
     bank_api_url = cfg.get("mb_api_url", "") if bank_type == "mb" else cfg.get("acb_api_url", "")
 
@@ -352,10 +419,6 @@ def payment_create():
         "INSERT INTO payments (payment_id, username, amount, status, created_at, min_tx_id, package_id, coupon_code, original_amount) VALUES (?,?,?,?,?,?,?,?,?)",
         (payment_id, username, final_amount, "pending", now, min_tx_id, package_id, coupon_code, original_amount)
     )
-
-    # Tăng used_count cho coupon
-    if applied_coupon:
-        conn.execute("UPDATE coupons SET used_count = used_count + 1 WHERE code=?", (coupon_code,))
 
     return jsonify({
         "success": True,

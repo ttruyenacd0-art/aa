@@ -67,7 +67,7 @@
 
             <div id="msg" class="msg"></div>
 
-            <form onsubmit="doLogin(event)">
+            <form id="loginForm" onsubmit="doLogin(event); return false;">
                 <div class="form-group">
                     <label>Tên tài khoản</label>
                     <input type="text" id="username" placeholder="Nhập tên tài khoản..." autocomplete="username" required>
@@ -108,13 +108,14 @@
             const r = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
+                credentials: 'same-origin',
                 body: JSON.stringify({username, password})
             });
             const d = await r.json();
             if (d.success) {
                 msg.className = 'msg success';
                 msg.textContent = 'Đăng nhập thành công! Đang chuyển hướng...';
-                setTimeout(() => { window.location.href = '/activate'; }, 1000);
+                setTimeout(() => { window.location.href = '/activate'; }, 800);
             } else {
                 msg.className = 'msg error';
                 msg.textContent = d.msg || 'Đăng nhập thất bại';

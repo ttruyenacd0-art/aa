@@ -262,6 +262,7 @@
 
 <script>
 let currentUser=null,userPackage=null,activationsUsed=0,maxActivations=0;
+let selectedPkgId=null,selectedPkgPrice=0,appliedDiscount=0,appliedCouponCode='',currentUserPkgPrice=0;
 
 function switchAuthTab(tab){
     document.querySelectorAll('.tabs .tab').forEach((t,i)=>{t.classList.toggle('active',i===(tab==='login'?0:1))});
@@ -274,16 +275,18 @@ function showMsg(id,text,type){const el=document.getElementById(id);el.textConte
 async function doLogin(){
     const u=document.getElementById('loginUser').value.trim(),p=document.getElementById('loginPass').value.trim();
     if(!u||!p){showMsg('authMsg','Vui lòng nhập đầy đủ thông tin','error');return;}
-    const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+    try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({username:u,password:p})});
     const d=await r.json();
     if(d.success) loadUser(); else showMsg('authMsg',d.msg||'Đăng nhập thất bại','error');
+    }catch(e){showMsg('authMsg','Lỗi kết nối server','error');}
 }
 async function doRegister(){
     const u=document.getElementById('regUser').value.trim(),p=document.getElementById('regPass').value.trim();
     if(!u||!p){showMsg('authMsg','Vui lòng nhập đầy đủ thông tin','error');return;}
-    const r=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+    try{const r=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({username:u,password:p})});
     const d=await r.json();
     if(d.success) loadUser(); else showMsg('authMsg',d.msg||'Đăng ký thất bại','error');
+    }catch(e){showMsg('authMsg','Lỗi kết nối server','error');}
 }
 async function doLogout(){
     await fetch('/api/auth/logout',{method:'POST'});
@@ -309,6 +312,7 @@ async function loadUserPackage(){
     const r=await fetch('/api/user-package');const d=await r.json();
     if(d.success&&d.package){
         userPackage=d.package;activationsUsed=d.activations_used||0;maxActivations=d.package.max_activations||1;
+        currentUserPkgPrice=d.package.price||0;
         document.getElementById('packageInfo').style.display='';
         document.getElementById('pkgName').textContent=d.package.name;
         document.getElementById('pkgDesc').textContent=d.package.description;
@@ -327,6 +331,7 @@ async function loadUserPackage(){
             document.getElementById('buyPackageSection').style.display='none';
         }
     } else {
+        currentUserPkgPrice=0;
         document.getElementById('packageInfo').style.display='none';
         document.getElementById('activateForm').style.display='none';
         document.getElementById('activateLocked').style.display='';
@@ -365,16 +370,20 @@ async function doReactivate(u){
 }
 
 // Buy package
-let selectedPkgId=null,selectedPkgPrice=0,appliedDiscount=0,appliedCouponCode='';
 function showBuyPackage(){document.getElementById('activateLocked').style.display='none';document.getElementById('buyPackageSection').style.display='';loadBuyPackages();}
 async function loadBuyPackages(){
     const r=await fetch('/api/packages');const d=await r.json();const list=document.getElementById('buyPkgList');
     if(!d.success||!d.packages.length){list.innerHTML='<p style="color:#52525b">Chưa có gói nào.</p>';return;}
-    list.innerHTML=d.packages.map(pkg=>`<div class="buy-pkg-item" onclick="selectPkg(this,${pkg.id},${pkg.price})" style="padding:14px 16px;border:1px solid rgba(255,255,255,.06);border-radius:14px;cursor:pointer;transition:all .3s;background:rgba(255,255,255,.02)">
+    list.innerHTML=d.packages.map(pkg=>{
+        const isDisabled = currentUserPkgPrice > 0 && pkg.price <= currentUserPkgPrice;
+        const disabledStyle = isDisabled ? 'opacity:.4;pointer-events:none;' : '';
+        const badge = isDisabled ? '<span style="font-size:.7rem;color:#fca5a5;margin-left:8px">Gói hiện tại hoặc thấp hơn</span>' : (pkg.price === 0 ? '<span style="font-size:.7rem;color:#4ade80;margin-left:8px">Miễn phí</span>' : '');
+        return `<div class="buy-pkg-item" ${isDisabled?'':'onclick="selectPkg(this,'+pkg.id+','+pkg.price+')"'} style="padding:14px 16px;border:1px solid rgba(255,255,255,.06);border-radius:14px;cursor:${isDisabled?'not-allowed':'pointer'};transition:all .3s;background:rgba(255,255,255,.02);${disabledStyle}">
         <div style="display:flex;justify-content:space-between;align-items:center">
-            <div><div style="font-weight:700;font-size:.95rem">${pkg.name}</div><div style="color:#52525b;font-size:.78rem">${pkg.description} - ${pkg.duration}</div></div>
-            <div style="font-weight:800;font-size:1.05rem;color:#fbbf24">${formatVND(pkg.price)}</div>
-        </div></div>`).join('');
+            <div><div style="font-weight:700;font-size:.95rem">${pkg.name}${badge}</div><div style="color:#52525b;font-size:.78rem">${pkg.description} - ${pkg.duration}</div></div>
+            <div style="font-weight:800;font-size:1.05rem;color:#fbbf24">${pkg.price===0?'Miễn phí':formatVND(pkg.price)}</div>
+        </div></div>`;
+    }).join('');
 }
 function formatVND(n){return new Intl.NumberFormat('vi-VN').format(n)+' đ';}
 function selectPkg(el,id,price){
@@ -383,6 +392,8 @@ function selectPkg(el,id,price){
     selectedPkgId=id;selectedPkgPrice=price;appliedDiscount=0;appliedCouponCode='';
     document.getElementById('couponMsg').textContent='';updatePriceSummary();
     document.getElementById('buyPayBtn').disabled=false;
+    if(price===0){document.getElementById('buyPayBtn').textContent='Nhận gói miễn phí';}
+    else{document.getElementById('buyPayBtn').textContent='Thanh toán';}
 }
 </script>
 
@@ -391,9 +402,14 @@ function updatePriceSummary(){
     document.getElementById('buyPriceSummary').style.display='';
     document.getElementById('buyOrigPrice').textContent=formatVND(selectedPkgPrice);
     const da=Math.floor(selectedPkgPrice*appliedDiscount/100);
+    const finalPrice=selectedPkgPrice-da;
     if(appliedDiscount>0){document.getElementById('buyDiscountRow').style.display='flex';document.getElementById('buyDiscount').textContent='-'+formatVND(da)+' ('+appliedDiscount+'%)';}
     else{document.getElementById('buyDiscountRow').style.display='none';}
-    document.getElementById('buyFinalPrice').textContent=formatVND(selectedPkgPrice-da);
+    document.getElementById('buyFinalPrice').textContent=finalPrice===0?'Miễn phí':formatVND(finalPrice);
+    // Update button text based on price
+    const btn=document.getElementById('buyPayBtn');
+    if(finalPrice===0){btn.textContent='Nhận gói miễn phí';}
+    else{btn.textContent='Thanh toán';}
 }
 async function applyCoupon(){
     const code=document.getElementById('buyCouponCode').value.trim(),msg=document.getElementById('couponMsg');
@@ -410,6 +426,17 @@ async function doBuyPackage(){
     try{const r=await fetch('/api/payment/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:user.username,package_id:selectedPkgId,coupon_code:appliedCouponCode})});
         const d=await r.json();
         if(!d.success){showMsg('buyPayMsg',d.msg||'Lỗi','error');btn.disabled=false;btn.textContent='Thanh toán';return;}
+        // Gói miễn phí (0đ) → tự động xác nhận, không cần chuyển khoản
+        if(d.free){
+            document.getElementById('buyPackageSection').innerHTML=`<div style="text-align:center;padding:24px 0">
+                <svg width="56" height="56" fill="none" stroke="#4ade80" stroke-width="2" viewBox="0 0 24 24" style="margin-bottom:16px"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <h3 style="color:#4ade80;font-size:1.2rem;margin-bottom:8px">Mua gói thành công!</h3>
+                <p style="color:#a1a1aa;font-size:.9rem">Gói <strong style="color:#fbbf24">${d.package_name}</strong> đã được kích hoạt.</p>
+                <p style="color:#71717a;font-size:.82rem;margin-top:8px">Đang tải lại trang...</p>
+            </div>`;
+            setTimeout(()=>location.reload(),2000);
+            return;
+        }
         showPaymentQR(d);
     }catch(e){showMsg('buyPayMsg','Lỗi kết nối','error');btn.disabled=false;btn.textContent='Thanh toán';}
 }
