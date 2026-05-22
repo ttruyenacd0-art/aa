@@ -709,8 +709,9 @@ def auth_me():
     if not user:
         session.clear()
         return jsonify({"success": False, "logged_in": False})
+    # Chỉ lấy records có payment_id (đã thanh toán thực), không lấy records "giả" tạo bởi activate
     purchases = conn.execute(
-        "SELECT locket_username, purchased_at FROM gold_purchases WHERE user_id=? ORDER BY purchased_at DESC",
+        "SELECT locket_username, purchased_at FROM gold_purchases WHERE user_id=? AND payment_id IS NOT NULL ORDER BY purchased_at DESC",
         (user_id,)
     ).fetchall()
     items = [
@@ -815,7 +816,7 @@ def payment_confirm_now():
 @bp.route("/api/gold/reactivate", methods=["POST"])
 def gold_reactivate():
     """Kích hoạt lại Gold cho locket_username đã có trong lịch sử mua của user.
-    Không cần thanh toán lại — chỉ cần xác nhận đã mua trước đó."""
+    Không cần thanh toán lại — chỉ cần xác nhận đã mua trước đó VÀ user có gói hợp lệ."""
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"success": False, "msg": "Bạn chưa đăng nhập"}), 401
@@ -826,13 +827,33 @@ def gold_reactivate():
         return jsonify({"success": False, "msg": "locket_username is required"}), 400
 
     conn = db.get_conn()
-    # Kiểm tra user đã từng mua locket_username này chưa
+
+    # Kiểm tra user có gói đã thanh toán thực sự (payment_id NOT NULL = đã qua thanh toán)
+    valid_purchase = conn.execute(
+        "SELECT id, package_id FROM gold_purchases WHERE user_id=? AND payment_id IS NOT NULL AND package_id IS NOT NULL ORDER BY purchased_at DESC LIMIT 1",
+        (user_id,)
+    ).fetchone()
+    if not valid_purchase:
+        return jsonify({"success": False, "msg": "Bạn chưa mua gói nào. Vui lòng mua gói trước khi kích hoạt lại."}), 403
+
+    # Kiểm tra user đã từng mua/kích hoạt locket_username này chưa (chỉ từ record có payment_id)
     purchase = conn.execute(
-        "SELECT id FROM gold_purchases WHERE user_id=? AND locket_username=? LIMIT 1",
+        "SELECT id FROM gold_purchases WHERE user_id=? AND locket_username=? AND payment_id IS NOT NULL LIMIT 1",
         (user_id, locket_username)
     ).fetchone()
     if not purchase:
         return jsonify({"success": False, "msg": "Không tìm thấy lịch sử mua Gold cho username này"}), 403
+
+    # Kiểm tra giới hạn kích hoạt của gói
+    pkg_id = valid_purchase["package_id"]
+    pkg = conn.execute("SELECT * FROM pricing_packages WHERE id=?", (pkg_id,)).fetchone()
+    if pkg:
+        used = conn.execute(
+            "SELECT COUNT(*) as c FROM gold_activations WHERE user_id=? AND package_id=?",
+            (user_id, pkg_id)
+        ).fetchone()["c"]
+        if used >= pkg["max_activations"]:
+            return jsonify({"success": False, "msg": f"Đã hết lượt kích hoạt ({used}/{pkg['max_activations']}). Vui lòng nâng cấp gói."}), 403
 
     # Gửi thông báo Telegram
     import threading
@@ -1017,26 +1038,15 @@ def user_package():
 
     conn = db.get_conn()
 
-    # Tìm gói mới nhất mà user đã mua (từ gold_purchases có package_id)
+    # Tìm gói mới nhất mà user đã mua (từ gold_purchases có package_id VÀ payment_id)
     purchase = conn.execute(
-        "SELECT package_id FROM gold_purchases WHERE user_id=? AND package_id IS NOT NULL ORDER BY purchased_at DESC LIMIT 1",
-        (user_id,)
-    ).fetchone()
-
-    # Cũng kiểm tra gold_activations
-    activation = conn.execute(
-        "SELECT package_id FROM gold_activations WHERE user_id=? ORDER BY activated_at DESC LIMIT 1",
+        "SELECT package_id FROM gold_purchases WHERE user_id=? AND package_id IS NOT NULL AND payment_id IS NOT NULL ORDER BY purchased_at DESC LIMIT 1",
         (user_id,)
     ).fetchone()
 
     pkg_id = None
     if purchase:
         pkg_id = purchase["package_id"]
-    if activation:
-        # Nếu activation mới hơn purchase thì ưu tiên activation
-        # Nhưng thực tế ta dùng package_id từ purchase (vì đó là gói đã thanh toán)
-        if not pkg_id:
-            pkg_id = activation["package_id"]
 
     # Nếu không tìm thấy package_id nào → user chưa mua gói
     if not pkg_id:
@@ -1082,21 +1092,16 @@ def gold_activate():
 
     conn = db.get_conn()
 
-    # Get user's current package (chỉ từ gold_purchases có package_id)
+    # Get user's current package — CHỈ từ gold_purchases có payment_id (đã thanh toán thực)
+    # Không fallback từ gold_activations để tránh user chưa mua gói vẫn activate được
     purchase = conn.execute(
-        "SELECT package_id FROM gold_purchases WHERE user_id=? AND package_id IS NOT NULL ORDER BY purchased_at DESC LIMIT 1",
-        (user_id,)
-    ).fetchone()
-    activation_rec = conn.execute(
-        "SELECT package_id FROM gold_activations WHERE user_id=? ORDER BY activated_at DESC LIMIT 1",
+        "SELECT package_id FROM gold_purchases WHERE user_id=? AND package_id IS NOT NULL AND payment_id IS NOT NULL ORDER BY purchased_at DESC LIMIT 1",
         (user_id,)
     ).fetchone()
 
     pkg_id = None
     if purchase:
         pkg_id = purchase["package_id"]
-    elif activation_rec:
-        pkg_id = activation_rec["package_id"]
 
     if not pkg_id:
         return jsonify({"success": False, "msg": "Bạn chưa mua gói nào. Vui lòng mua gói trước."}), 403
@@ -1129,11 +1134,6 @@ def gold_activate():
     conn.execute(
         "INSERT INTO gold_activations (user_id, package_id, locket_username, activated_at, status) VALUES (?,?,?,?,?)",
         (user_id, pkg_id, locket_username, now, "active")
-    )
-    # Also record in gold_purchases for history
-    conn.execute(
-        "INSERT INTO gold_purchases (user_id, locket_username, package_id, purchased_at) VALUES (?,?,?,?)",
-        (user_id, locket_username, pkg_id, now)
     )
 
     status = qm.get_status(client_id)
