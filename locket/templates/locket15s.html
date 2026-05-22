@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Locket 15s - Hướng Dẫn Cài Đặt</title>
+    <link rel="icon" href="https://sf-static.upanhlaylink.com/img/image_202601296d59cc036b9dbae09695b98cf9310a6b.jpg" type="image/jpeg">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Outfit',sans-serif;background:#0a0a0a;color:#fff;min-height:100vh;overflow-x:hidden}
+        a{text-decoration:none;color:inherit}
+        .bg-gradient{position:fixed;inset:0;z-index:-1;overflow:hidden}
+        .bg-gradient::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(ellipse at 30% 20%,rgba(245,158,11,.06) 0%,transparent 50%),radial-gradient(ellipse at 70% 80%,rgba(217,119,6,.04) 0%,transparent 50%);animation:drift 20s ease-in-out infinite alternate}
+        @keyframes drift{0%{transform:translate(0,0) rotate(0deg)}100%{transform:translate(-3%,3%) rotate(2deg)}}
+
+        .header{position:fixed;top:0;left:0;right:0;z-index:50;background:rgba(10,10,10,.85);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid rgba(255,255,255,.06)}
+        .header-inner{max-width:1200px;margin:0 auto;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
+        .logo{display:flex;align-items:center;gap:12px}
+        .logo img{width:40px;height:40px;border-radius:50%;border:2px solid rgba(245,158,11,.3);box-shadow:0 0 12px rgba(245,158,11,.2)}
+        .logo span{font-size:1.4rem;font-weight:900;background:linear-gradient(135deg,#fde68a,#f59e0b,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-transform:uppercase;letter-spacing:.5px}
+        .nav{display:flex;align-items:center;gap:12px}
+        .nav a{padding:8px 18px;font-size:.85rem;font-weight:500;color:#a1a1aa;border:1px solid rgba(255,255,255,.1);border-radius:999px;transition:all .3s}
+        .nav a:hover{border-color:rgba(245,158,11,.4);color:#fbbf24;background:rgba(245,158,11,.05)}
+        .nav .btn-start{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-weight:700;border:none;padding:10px 24px;box-shadow:0 4px 16px rgba(245,158,11,.3)}
+        .nav .btn-start:hover{box-shadow:0 6px 24px rgba(245,158,11,.5);transform:translateY(-1px)}
+        @media(max-width:768px){.nav{display:none}}
+
+        .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:50;background:rgba(10,10,10,.95);backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,.08);padding:12px 16px;gap:8px}
+        @media(max-width:768px){.mobile-nav{display:flex;justify-content:space-around}}
+        .mobile-nav a{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:.7rem;color:#6b7280;transition:color .3s}
+        .mobile-nav a.active{color:#f59e0b}
+        .mobile-nav a svg{width:20px;height:20px}
+
+        .main-section{padding:130px 24px 120px;position:relative}
+        .section-inner{max-width:800px;margin:0 auto}
+
+        .section-header{text-align:center;margin-bottom:48px}
+        .section-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);padding:6px 16px;border-radius:999px;font-size:.75rem;font-weight:600;color:#fbbf24;text-transform:uppercase;letter-spacing:1px;margin-bottom:20px}
+        .section-badge svg{width:14px;height:14px}
+        .section-header h1{font-size:clamp(2rem,5vw,3rem);font-weight:900;letter-spacing:-1px;margin-bottom:12px;line-height:1.1}
+        .section-header h1 .gold{background:linear-gradient(135deg,#fde68a,#f59e0b,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .section-header p{color:#71717a;font-size:1rem;max-width:520px;margin:0 auto;line-height:1.6}
+
+        /* Action Buttons */
+        .action-buttons{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-bottom:48px}
+        .action-btn{display:inline-flex;align-items:center;gap:10px;padding:14px 28px;border-radius:16px;font-size:.95rem;font-weight:700;border:none;cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);font-family:inherit}
+        .action-btn.gold{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;box-shadow:0 4px 16px rgba(245,158,11,.3)}
+        .action-btn.gold:hover{box-shadow:0 8px 32px rgba(245,158,11,.5);transform:translateY(-2px)}
+        .action-btn.outline{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.15);color:#d4d4d8}
+        .action-btn.outline:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.25);color:#fff;transform:translateY(-2px)}
+        .action-btn svg{width:20px;height:20px}
+
+        /* Video Section */
+        .video-section{margin-bottom:48px;border-radius:20px;overflow:hidden;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02)}
+        .video-section video,.video-section iframe{width:100%;aspect-ratio:16/9;display:block;border:none}
+        .video-section.hidden{display:none}
+
+        /* Guide Content */
+        .guide-content{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:32px;line-height:1.8;font-size:.95rem;color:#d4d4d8}
+        .guide-content h2,.guide-content h3{color:#fff;margin:20px 0 10px;font-weight:700}
+        .guide-content h2{font-size:1.3rem}
+        .guide-content h3{font-size:1.1rem}
+        .guide-content p{margin-bottom:12px}
+        .guide-content ul,.guide-content ol{padding-left:24px;margin-bottom:12px}
+        .guide-content li{margin-bottom:6px}
+        .guide-content a{color:#fbbf24;text-decoration:underline}
+        .guide-content img{max-width:100%;border-radius:12px;margin:12px 0}
+        .guide-content code{background:rgba(255,255,255,.08);padding:2px 8px;border-radius:6px;font-size:.85rem}
+        .guide-content.empty{text-align:center;color:#52525b;padding:60px 32px}
+
+        /* Contact Bubble */
+        .contact-bubble{position:fixed;bottom:90px;right:24px;z-index:9999}
+        @media(min-width:769px){.contact-bubble{bottom:24px}}
+        .contact-bubble a{display:flex;align-items:center;justify-content:center;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 6px 24px rgba(245,158,11,.4),0 0 0 4px rgba(245,158,11,.1);transition:all .3s;animation:pulse-bubble 3s ease-in-out infinite}
+        .contact-bubble a:hover{transform:scale(1.12)}
+        .contact-bubble a svg{width:28px;height:28px;color:#000}
+        @keyframes pulse-bubble{0%,100%{box-shadow:0 6px 24px rgba(245,158,11,.4),0 0 0 4px rgba(245,158,11,.1)}50%{box-shadow:0 6px 24px rgba(245,158,11,.5),0 0 0 8px rgba(245,158,11,.05)}}
+
+        ::-webkit-scrollbar{width:6px}
+        ::-webkit-scrollbar-track{background:transparent}
+        ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+
+    <header class="header">
+        <div class="header-inner">
+            <a href="/" class="logo">
+                <img src="https://sf-static.upanhlaylink.com/img/image_20260129415b4b531beb8c3c98aacc4ddfbabea2.jpg" alt="Locket Gold">
+                <span>Locket Gold</span>
+            </a>
+            <nav class="nav">
+                <a href="/">Trang chủ</a>
+                <a href="/pricing">Bảng giá</a>
+                <a href="/locket15s">Locket 15s</a>
+                <a href="/activate" class="btn-start">Kích hoạt Gold</a>
+            </nav>
+        </div>
+    </header>
+
+    <nav class="mobile-nav">
+        <a href="/"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>Trang chủ</a>
+        <a href="/pricing"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>Bảng giá</a>
+        <a href="/locket15s" class="active"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Locket 15s</a>
+        <a href="/activate"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>Kích hoạt</a>
+    </nav>
+
+    <section class="main-section">
+        <div class="section-inner">
+            <div class="section-header">
+                <div class="section-badge">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Hướng dẫn cài đặt
+                </div>
+                <h1>Cài đặt <span class="gold">Locket 15s</span></h1>
+                <p>Hướng dẫn chi tiết cách cài đặt và sử dụng Locket 15s trên thiết bị của bạn.</p>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <a id="btnShadowrocket" href="itms-services://?action=download-manifest&url=https%3A%2F%2Fdl.3u.com%2Fplist%2F2025%2F09%2F28%2F1759023053857_696086.plist" class="action-btn gold">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    Tải Shadowrocket
+                </a>
+                <a id="btnDns" href="#" class="action-btn outline" style="display:none">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Tải DNS Config
+                </a>
+            </div>
+
+            <!-- Video -->
+            <div class="video-section hidden" id="videoSection"></div>
+
+            <!-- Guide Content -->
+            <div class="guide-content" id="guideContent">
+                <div class="empty">
+                    <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 16px;display:block;color:#3f3f46"><path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+                    <p>Đang tải nội dung hướng dẫn...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Bubble -->
+    <div class="contact-bubble" id="contactBubble">
+        <a id="contactLink" href="#" target="_blank" rel="noopener noreferrer">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+        </a>
+    </div>
+
+    <script>
+    // Load page content from API
+    fetch('/api/locket15s').then(r=>r.json()).then(data=>{
+        if(!data.success) return;
+
+        // Guide text (HTML)
+        const guide = document.getElementById('guideContent');
+        if(data.guide_html){
+            guide.innerHTML = data.guide_html;
+            guide.classList.remove('empty');
+        } else {
+            guide.innerHTML = '<div class="empty"><p>Chưa có nội dung hướng dẫn. Admin vui lòng cập nhật.</p></div>';
+        }
+
+        // Video
+        const videoSection = document.getElementById('videoSection');
+        if(data.video_url){
+            videoSection.classList.remove('hidden');
+            const url = data.video_url;
+            if(url.includes('youtube.com') || url.includes('youtu.be')){
+                let vid = '';
+                if(url.includes('youtu.be/')) vid = url.split('youtu.be/')[1].split(/[?#]/)[0];
+                else if(url.includes('v=')) vid = url.split('v=')[1].split(/[&#]/)[0];
+                videoSection.innerHTML = `<iframe src="https://www.youtube.com/embed/${vid}" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>`;
+            } else {
+                videoSection.innerHTML = `<video controls playsinline><source src="${url}" type="video/mp4">Trình duyệt không hỗ trợ video.</video>`;
+            }
+        }
+
+        // DNS download button
+        if(data.has_dns){
+            const btn = document.getElementById('btnDns');
+            btn.style.display = 'inline-flex';
+            btn.href = '/api/locket15s/dns-download';
+        }
+    }).catch(()=>{
+        document.getElementById('guideContent').innerHTML = '<div class="empty"><p>Lỗi kết nối. Vui lòng thử lại.</p></div>';
+    });
+
+    // Contact bubble
+    fetch('/api/site-settings').then(r=>r.json()).then(data=>{
+        const bubble = data.contact_bubble;
+        if(bubble && bubble.enabled){
+            const link=document.getElementById('contactLink');
+            if(bubble.type==='phone') link.href='tel:'+bubble.phone;
+            else{
+                const z=bubble.zalo_link||'';
+                link.href=z.startsWith('http')?z:('https://zalo.me/'+z.replace(/\D/g,''));
+            }
+        } else document.getElementById('contactBubble').style.display='none';
+    }).catch(()=>{ document.getElementById('contactBubble').style.display='none'; });
+    </script>
+</body>
+</html>

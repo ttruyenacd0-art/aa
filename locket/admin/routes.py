@@ -858,3 +858,115 @@ def video_settings_set():
         ("video_url", payload, time.time()),
     )
     return jsonify({"success": True})
+
+
+# ─── LOCKET 15s SETTINGS ──────────────────────────────────────────────────────
+
+@bp.route("/api/locket15s", methods=["GET"])
+@admin_required
+def locket15s_get():
+    """Lấy cài đặt trang Locket 15s (guide HTML, video URL, DNS info)."""
+    import json as _json
+    conn = db.get_conn()
+
+    # Guide HTML
+    row = conn.execute("SELECT value FROM site_settings WHERE key='locket15s_guide'").fetchone()
+    guide_html = ""
+    if row:
+        try:
+            guide_html = _json.loads(row["value"]).get("html", "")
+        except Exception:
+            guide_html = row["value"] if isinstance(row["value"], str) else ""
+
+    # Video URL
+    row2 = conn.execute("SELECT value FROM site_settings WHERE key='locket15s_video'").fetchone()
+    video_url = ""
+    if row2:
+        try:
+            video_url = _json.loads(row2["value"]).get("url", "")
+        except Exception:
+            video_url = ""
+
+    # DNS file info
+    dns_path = os.path.join(current_app.root_path, "static", "locket15s_dns.mobileconfig")
+    dns_exists = os.path.exists(dns_path)
+    dns_size = os.path.getsize(dns_path) if dns_exists else 0
+
+    return jsonify({
+        "success": True,
+        "guide_html": guide_html,
+        "video_url": video_url,
+        "dns_exists": dns_exists,
+        "dns_size": dns_size,
+    })
+
+
+@bp.route("/api/locket15s/guide", methods=["PUT"])
+@admin_required
+def locket15s_guide_set():
+    """Cập nhật nội dung hướng dẫn (HTML) cho trang Locket 15s."""
+    import json as _json
+    body = request.get_json(silent=True) or {}
+    guide_html = (body.get("guide_html") or "").strip()
+    payload = _json.dumps({"html": guide_html})
+    conn = db.get_conn()
+    conn.execute(
+        "INSERT INTO site_settings (key, value, updated_at) VALUES (?,?,?) "
+        "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
+        ("locket15s_guide", payload, time.time()),
+    )
+    return jsonify({"success": True})
+
+
+@bp.route("/api/locket15s/video", methods=["PUT"])
+@admin_required
+def locket15s_video_set():
+    """Cập nhật video URL cho trang Locket 15s."""
+    import json as _json
+    body = request.get_json(silent=True) or {}
+    video_url = (body.get("video_url") or "").strip()
+    payload = _json.dumps({"url": video_url})
+    conn = db.get_conn()
+    conn.execute(
+        "INSERT INTO site_settings (key, value, updated_at) VALUES (?,?,?) "
+        "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
+        ("locket15s_video", payload, time.time()),
+    )
+    return jsonify({"success": True})
+
+
+MAX_DNS_FILE_BYTES = 5 * 1024 * 1024  # 5 MB
+
+
+@bp.route("/api/locket15s/dns", methods=["POST"])
+@admin_required
+def locket15s_dns_upload():
+    """Upload DNS config file (.mobileconfig) cho trang Locket 15s."""
+    f = request.files.get("file")
+    if f is None or not f.filename:
+        return jsonify({"success": False, "error": "Missing file"}), 400
+
+    blob = f.read(MAX_DNS_FILE_BYTES + 1)
+    if len(blob) == 0:
+        return jsonify({"success": False, "error": "Empty file"}), 400
+    if len(blob) > MAX_DNS_FILE_BYTES:
+        return jsonify({"success": False, "error": "File too large (max 5 MB)"}), 400
+
+    target = os.path.join(current_app.root_path, "static", "locket15s_dns.mobileconfig")
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    tmp = target + ".tmp"
+    with open(tmp, "wb") as out:
+        out.write(blob)
+    os.replace(tmp, target)
+    st = os.stat(target)
+    return jsonify({"success": True, "size": st.st_size})
+
+
+@bp.route("/api/locket15s/dns", methods=["DELETE"])
+@admin_required
+def locket15s_dns_delete():
+    """Xóa DNS config file."""
+    dns_path = os.path.join(current_app.root_path, "static", "locket15s_dns.mobileconfig")
+    if os.path.exists(dns_path):
+        os.remove(dns_path)
+    return jsonify({"success": True})

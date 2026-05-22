@@ -605,6 +605,10 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/></svg>
                 DNS / Profile
             </button>
+            <button class="tab-btn" data-tab="locket15s">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Locket 15s
+            </button>
         </nav>
 
         <div class="tab-pane" data-pane="accounts">
@@ -1779,6 +1783,7 @@
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.dataset.pane === name));
             try { localStorage.setItem(TAB_KEY, name); } catch (_) {}
+            if(name === 'locket15s' && typeof loadL15sData === 'function') loadL15sData();
         }
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.onclick = () => activateTab(btn.dataset.tab);
@@ -2253,6 +2258,177 @@
         prev.innerHTML=`<iframe src="https://www.youtube.com/embed/${videoId}" style="width:100%;aspect-ratio:16/9;border:0;display:block" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe>`;
     }
     loadVideoUrl();
+    </script>
+
+    <!-- ═══ LOCKET 15s SETTINGS TAB ═══ -->
+    <div class="tab-pane" data-pane="locket15s">
+        <section class="card">
+            <h2>
+                <span style="display:flex;align-items:center;gap:8px;">
+                    <svg class="section-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Nội dung hướng dẫn Locket 15s
+                </span>
+            </h2>
+            <p style="font-size:.85em;color:#71717a;margin-bottom:12px">Soạn nội dung hướng dẫn (HTML) hiển thị trên trang /locket15s</p>
+            <div id="l15sEditorWrap">
+                <div id="l15sEditor" style="height:250px"></div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:12px;gap:8px">
+                <button onclick="saveL15sGuide()" style="padding:10px 20px;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-weight:700;border:none;cursor:pointer">Lưu hướng dẫn</button>
+            </div>
+            <div id="l15sGuideMsg" style="font-size:.85em;margin-top:8px"></div>
+        </section>
+
+        <section class="card" style="margin-top:18px">
+            <h2>
+                <span style="display:flex;align-items:center;gap:8px;">
+                    <svg class="section-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                    Video hướng dẫn Locket 15s
+                </span>
+            </h2>
+            <div style="display:flex;flex-direction:column;gap:10px">
+                <div>
+                    <div class="label">Video URL (YouTube hoặc link trực tiếp)</div>
+                    <input id="l15sVideoUrl" type="text" placeholder="VD: https://youtube.com/watch?v=... hoặc link .mp4" style="width:100%;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,215,0,.15);border-radius:10px;color:#fff;font-size:.9em">
+                </div>
+                <div style="display:flex;gap:8px">
+                    <button onclick="saveL15sVideo()" style="padding:10px 18px;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-weight:700;border:none;cursor:pointer">Lưu Video</button>
+                </div>
+                <div id="l15sVideoMsg" style="font-size:.85em"></div>
+            </div>
+        </section>
+
+        <section class="card" style="margin-top:18px">
+            <h2>
+                <span style="display:flex;align-items:center;gap:8px;">
+                    <svg class="section-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Upload DNS Config (.mobileconfig)
+                </span>
+            </h2>
+            <div id="l15sDnsMsg" style="font-size:.85em;margin-bottom:10px"></div>
+            <div id="l15sDnsInfo" style="margin-bottom:14px"></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <input type="file" id="l15sDnsFile" accept=".mobileconfig" style="font-size:.85em;color:#aaa">
+                <button onclick="uploadL15sDns()" style="padding:10px 18px;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-weight:700;border:none;cursor:pointer">Upload DNS</button>
+                <button onclick="deleteL15sDns()" style="padding:10px 18px;border-radius:10px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#fca5a5;font-weight:600;cursor:pointer">Xóa DNS</button>
+            </div>
+        </section>
+    </div>
+
+    <script>
+    // --- Locket 15s Management ---
+    let l15sQuill = null;
+
+    function initL15sEditor(){
+        if(l15sQuill) return;
+        l15sQuill = new Quill('#l15sEditor', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    [{ 'header': [2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    ['link', 'image'],
+                    ['clean']
+                ]
+            },
+            placeholder: 'Nhập nội dung hướng dẫn Locket 15s...'
+        });
+    }
+
+    async function loadL15sData(){
+        initL15sEditor();
+        try {
+            const r = await fetch('/admin/api/locket15s');
+            const d = await r.json();
+            if(!d.success) return;
+
+            // Guide HTML
+            if(d.guide_html && l15sQuill){
+                l15sQuill.root.innerHTML = d.guide_html;
+            }
+
+            // Video URL
+            if(d.video_url){
+                document.getElementById('l15sVideoUrl').value = d.video_url;
+            }
+
+            // DNS info
+            const info = document.getElementById('l15sDnsInfo');
+            if(d.dns_exists){
+                info.innerHTML = `<div style="padding:12px 14px;background:rgba(34,197,94,.05);border:1px solid rgba(34,197,94,.15);border-radius:12px;font-size:.88rem">
+                    <span style="color:#4ade80;font-weight:600">✓ Đã có file DNS</span> — ${(d.dns_size/1024).toFixed(1)} KB
+                </div>`;
+            } else {
+                info.innerHTML = '<div style="padding:12px 14px;background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.15);border-radius:12px;font-size:.88rem;color:#fca5a5">Chưa upload file DNS.</div>';
+            }
+        } catch(e) {
+            console.error('Load locket15s error:', e);
+        }
+    }
+
+    async function saveL15sGuide(){
+        const html = l15sQuill ? l15sQuill.root.innerHTML : '';
+        const r = await fetch('/admin/api/locket15s/guide', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({guide_html: html})
+        });
+        const d = await r.json();
+        const msg = document.getElementById('l15sGuideMsg');
+        msg.textContent = d.success ? 'Đã lưu hướng dẫn!' : 'Lỗi khi lưu';
+        msg.style.color = d.success ? '#4ade80' : '#fca5a5';
+    }
+
+    async function saveL15sVideo(){
+        const url = document.getElementById('l15sVideoUrl').value.trim();
+        const r = await fetch('/admin/api/locket15s/video', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({video_url: url})
+        });
+        const d = await r.json();
+        const msg = document.getElementById('l15sVideoMsg');
+        msg.textContent = d.success ? 'Đã lưu video!' : 'Lỗi';
+        msg.style.color = d.success ? '#4ade80' : '#fca5a5';
+    }
+
+    async function uploadL15sDns(){
+        const file = document.getElementById('l15sDnsFile').files[0];
+        if(!file){
+            document.getElementById('l15sDnsMsg').textContent = 'Chọn file trước';
+            document.getElementById('l15sDnsMsg').style.color = '#fca5a5';
+            return;
+        }
+        const fd = new FormData();
+        fd.append('file', file);
+        const r = await fetch('/admin/api/locket15s/dns', {method:'POST', body:fd});
+        const d = await r.json();
+        const msg = document.getElementById('l15sDnsMsg');
+        msg.textContent = d.success ? 'Upload DNS thành công!' : 'Lỗi: '+(d.error||'');
+        msg.style.color = d.success ? '#4ade80' : '#fca5a5';
+        if(d.success) loadL15sData();
+    }
+
+    async function deleteL15sDns(){
+        if(!confirm('Xóa file DNS config?')) return;
+        await fetch('/admin/api/locket15s/dns', {method:'DELETE'});
+        document.getElementById('l15sDnsMsg').textContent = 'Đã xóa DNS';
+        document.getElementById('l15sDnsMsg').style.color = '#4ade80';
+        loadL15sData();
+    }
+
+    // Load on tab switch
+    document.addEventListener('DOMContentLoaded', ()=>{
+        const observer = new MutationObserver(()=>{
+            const pane = document.querySelector('[data-pane="locket15s"]');
+            if(pane && pane.classList.contains('active') && !l15sQuill){
+                loadL15sData();
+            }
+        });
+        const wrap = document.querySelector('.wrap');
+        if(wrap) observer.observe(wrap, {subtree:true, attributes:true, attributeFilter:['class']});
+    });
     </script>
 
     <!-- ═══ CONTACT BUBBLE SETTINGS ═══ -->

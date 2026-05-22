@@ -976,6 +976,63 @@ def payment_link_to_account():
 
 
 
+# ─── LOCKET 15s PAGE & API ─────────────────────────────────────────────────────
+
+@bp.route("/locket15s")
+def locket15s_page():
+    return render_template("locket15s.html")
+
+
+@bp.route("/api/locket15s", methods=["GET"])
+def locket15s_content():
+    """Public API: trả về nội dung trang Locket 15s (hướng dẫn text, video, DNS info)."""
+    import json as _json
+    conn = db.get_conn()
+
+    # Lấy guide HTML
+    row = conn.execute("SELECT value FROM site_settings WHERE key='locket15s_guide'").fetchone()
+    guide_html = ""
+    if row:
+        try:
+            guide_html = _json.loads(row["value"]).get("html", "")
+        except Exception:
+            guide_html = row["value"] if isinstance(row["value"], str) else ""
+
+    # Lấy video URL
+    row2 = conn.execute("SELECT value FROM site_settings WHERE key='locket15s_video'").fetchone()
+    video_url = ""
+    if row2:
+        try:
+            video_url = _json.loads(row2["value"]).get("url", "")
+        except Exception:
+            video_url = ""
+
+    # Check DNS file exists
+    dns_path = os.path.join(current_app.root_path, "static", "locket15s_dns.mobileconfig")
+    has_dns = os.path.exists(dns_path)
+
+    return jsonify({
+        "success": True,
+        "guide_html": guide_html,
+        "video_url": video_url,
+        "has_dns": has_dns,
+    })
+
+
+@bp.route("/api/locket15s/dns-download", methods=["GET"])
+def locket15s_dns_download():
+    """Download DNS config file cho Locket 15s."""
+    dns_path = os.path.join(current_app.root_path, "static", "locket15s_dns.mobileconfig")
+    if not os.path.exists(dns_path):
+        return jsonify({"success": False, "msg": "DNS config chưa được upload"}), 404
+    return send_file(
+        dns_path,
+        mimetype="application/x-apple-aspen-config",
+        as_attachment=False,
+        download_name="locket15s_dns.mobileconfig",
+    )
+
+
 # ─── PRICING PAGE & PACKAGES API ──────────────────────────────────────────────
 
 @bp.route("/pricing")
