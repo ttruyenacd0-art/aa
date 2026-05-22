@@ -142,9 +142,50 @@ CREATE TABLE IF NOT EXISTS gold_purchases (
     user_id INTEGER NOT NULL REFERENCES user_accounts(id),
     locket_username TEXT NOT NULL,
     payment_id TEXT,
-    purchased_at REAL NOT NULL
+    purchased_at REAL NOT NULL,
+    package_id INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_gold_purchases_user ON gold_purchases(user_id);
+
+-- Bảng gói dịch vụ (tối đa 3 gói, quản lý từ admin)
+CREATE TABLE IF NOT EXISTS pricing_packages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    price INTEGER NOT NULL,
+    duration TEXT NOT NULL DEFAULT 'Vĩnh viễn',
+    description TEXT NOT NULL DEFAULT '',
+    features TEXT NOT NULL DEFAULT '[]',
+    purchase_count INTEGER NOT NULL DEFAULT 0,
+    max_activations INTEGER NOT NULL DEFAULT 1,
+    is_featured INTEGER NOT NULL DEFAULT 0,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    created_at REAL NOT NULL
+);
+
+-- Bảng lưu lịch sử kích hoạt Gold theo gói
+CREATE TABLE IF NOT EXISTS gold_activations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES user_accounts(id),
+    package_id INTEGER NOT NULL REFERENCES pricing_packages(id),
+    locket_username TEXT NOT NULL,
+    payment_id TEXT,
+    activated_at REAL NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','expired','reactivated'))
+);
+CREATE INDEX IF NOT EXISTS idx_gold_activations_user ON gold_activations(user_id);
+CREATE INDEX IF NOT EXISTS idx_gold_activations_package ON gold_activations(package_id);
+
+-- Mã giảm giá (admin tạo, user nhập khi thanh toán)
+CREATE TABLE IF NOT EXISTS coupons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL UNIQUE,
+    discount_percent INTEGER NOT NULL DEFAULT 0,
+    max_uses INTEGER DEFAULT NULL,
+    used_count INTEGER NOT NULL DEFAULT 0,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    created_at REAL NOT NULL
+);
 """
 
 
@@ -177,6 +218,23 @@ def _migrate_schema_columns(conn):
     if "min_tx_id" not in cols:
         conn.execute("ALTER TABLE payments ADD COLUMN min_tx_id INTEGER NOT NULL DEFAULT 0")
         print("db: migrated payments.min_tx_id column")
+
+    # Add package_id to gold_purchases if not present
+    gp_cols = {r[1] for r in conn.execute("PRAGMA table_info(gold_purchases)").fetchall()}
+    if "package_id" not in gp_cols:
+        conn.execute("ALTER TABLE gold_purchases ADD COLUMN package_id INTEGER")
+        print("db: migrated gold_purchases.package_id column")
+
+    # Add coupon/package columns to payments if not present
+    if "package_id" not in cols:
+        conn.execute("ALTER TABLE payments ADD COLUMN package_id INTEGER")
+        print("db: migrated payments.package_id column")
+    if "coupon_code" not in cols:
+        conn.execute("ALTER TABLE payments ADD COLUMN coupon_code TEXT DEFAULT ''")
+        print("db: migrated payments.coupon_code column")
+    if "original_amount" not in cols:
+        conn.execute("ALTER TABLE payments ADD COLUMN original_amount INTEGER DEFAULT 0")
+        print("db: migrated payments.original_amount column")
 
 
 def _migrate_legacy_files(conn):

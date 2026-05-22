@@ -585,6 +585,30 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 Telegram
             </button>
+            <button class="tab-btn" data-tab="coupons">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+                Mã giảm giá
+            </button>
+            <button class="tab-btn" data-tab="users">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Quản lý User
+            </button>
+            <button class="tab-btn" data-tab="pricing">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/></svg>
+                Bảng giá
+            </button>
+            <button class="tab-btn" data-tab="contact">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                Liên hệ
+            </button>
+            <button class="tab-btn" data-tab="dns">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/></svg>
+                DNS / Profile
+            </button>
+            <button class="tab-btn" data-tab="locket15s">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Locket 15s
+            </button>
         </nav>
 
         <div class="tab-pane" data-pane="accounts">
@@ -908,6 +932,43 @@
                         </button>
                     </div>
                     <p id="tg_msg" style="font-size:.82rem;margin:0;min-height:18px"></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane" data-pane="coupons">
+            <div class="card">
+                <h2>
+                    <span style="display:flex;align-items:center;gap:8px;">
+                        <svg class="section-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+                        Quản lý mã giảm giá
+                    </span>
+                    <span class="pill" id="coupon-count">...</span>
+                </h2>
+                <p style="font-size:.82rem;color:#888;margin:4px 0 12px">Tạo mã giảm giá để người dùng nhập khi thanh toán. VD: mã SALE10 giảm 10%.</p>
+                <table id="coupon-table">
+                    <thead><tr><th>Mã</th><th>Giảm (%)</th><th>Đã dùng</th><th>Giới hạn</th><th>Trạng thái</th><th></th></tr></thead>
+                    <tbody></tbody>
+                </table>
+                <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06)">
+                    <h3 style="font-size:.9em;margin-bottom:10px;color:var(--gold-light)">Thêm mã giảm giá</h3>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+                        <div>
+                            <div style="font-size:.72em;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin-bottom:4px">Mã giảm giá</div>
+                            <input id="coupon-code" type="text" placeholder="VD: SALE10" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,215,0,.15);background:rgba(255,255,255,.03);color:#fff;font-size:.9rem;text-transform:uppercase">
+                        </div>
+                        <div>
+                            <div style="font-size:.72em;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin-bottom:4px">% Giảm giá</div>
+                            <input id="coupon-percent" type="number" min="1" max="100" value="10" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,215,0,.15);background:rgba(255,255,255,.03);color:#fff;font-size:.9rem">
+                        </div>
+                        <div>
+                            <div style="font-size:.72em;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin-bottom:4px">Giới hạn lượt (trống = vô hạn)</div>
+                            <input id="coupon-max" type="number" min="1" placeholder="Không giới hạn" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,215,0,.15);background:rgba(255,255,255,.03);color:#fff;font-size:.9rem">
+                        </div>
+                    </div>
+                    <button onclick="addCoupon()" style="margin-top:10px;padding:10px 20px;background:linear-gradient(135deg,#ffd700,#ffaa00);color:#000;font-weight:700;border:none;border-radius:10px;cursor:pointer;font-size:.9rem">
+                        Thêm mã
+                    </button>
                 </div>
             </div>
         </div>
@@ -1722,6 +1783,7 @@
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.dataset.pane === name));
             try { localStorage.setItem(TAB_KEY, name); } catch (_) {}
+            if(name === 'locket15s' && typeof loadL15sData === 'function') loadL15sData();
         }
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.onclick = () => activateTab(btn.dataset.tab);
@@ -1888,6 +1950,561 @@
         }
 
         loadTelegramSettings();
+
+        // ── COUPONS (Mã giảm giá) ────────────────────────────────────────
+        async function loadCoupons() {
+            try {
+                const data = await api('GET', '/admin/api/coupons');
+                const items = data.coupons || [];
+                document.getElementById('coupon-count').textContent = items.length + ' mã';
+                const tbody = document.querySelector('#coupon-table tbody');
+                tbody.innerHTML = '';
+                if (!items.length) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty">Chưa có mã giảm giá nào</td></tr>';
+                    return;
+                }
+                items.forEach(c => {
+                    const tr = document.createElement('tr');
+                    const maxLabel = c.max_uses != null ? c.max_uses : '∞';
+                    tr.innerHTML = `
+                        <td class="mono" style="font-weight:600;color:var(--gold)">${c.code}</td>
+                        <td style="font-weight:600">${c.discount_percent}%</td>
+                        <td>${c.used_count}</td>
+                        <td>${maxLabel}</td>
+                        <td>
+                            <label class="switch" style="gap:6px;">
+                                <input type="checkbox" data-coupon-toggle="${c.id}" ${c.enabled ? 'checked' : ''}>
+                                <span class="track"></span>
+                                <span style="font-size:.78em;">${c.enabled ? 'Bật' : 'Tắt'}</span>
+                            </label>
+                        </td>
+                        <td style="text-align:right">
+                            <button class="icon danger" data-coupon-del="${c.id}">${svgTrash}</button>
+                        </td>`;
+                    tbody.appendChild(tr);
+                });
+                tbody.querySelectorAll('input[data-coupon-toggle]').forEach(inp => {
+                    inp.onchange = async () => {
+                        try {
+                            await api('PUT', `/admin/api/coupons/${inp.dataset.couponToggle}`, { enabled: inp.checked });
+                            await loadCoupons();
+                        } catch(e) { Swal.fire({...swalGlass, icon:'error', title:'Lỗi', text:e.message}); }
+                    };
+                });
+                tbody.querySelectorAll('button[data-coupon-del]').forEach(btn => {
+                    btn.onclick = async () => {
+                        const ok = await Swal.fire({...swalGlass, icon:'warning', title:'Xoá mã này?', showCancelButton:true, confirmButtonText:'Xoá'});
+                        if (!ok.isConfirmed) return;
+                        try {
+                            await api('DELETE', `/admin/api/coupons/${btn.dataset.couponDel}`);
+                            await loadCoupons();
+                        } catch(e) { Swal.fire({...swalGlass, icon:'error', title:'Lỗi', text:e.message}); }
+                    };
+                });
+            } catch(e) { console.error(e); }
+        }
+
+        async function addCoupon() {
+            const code = document.getElementById('coupon-code').value.trim();
+            const discount_percent = parseInt(document.getElementById('coupon-percent').value) || 10;
+            const maxVal = document.getElementById('coupon-max').value.trim();
+            const max_uses = maxVal ? parseInt(maxVal) : null;
+            if (!code) {
+                Swal.fire({...swalGlass, icon:'warning', title:'Thiếu thông tin', text:'Vui lòng nhập mã giảm giá'});
+                return;
+            }
+            try {
+                await api('POST', '/admin/api/coupons', { code, discount_percent, max_uses });
+                document.getElementById('coupon-code').value = '';
+                document.getElementById('coupon-percent').value = '10';
+                document.getElementById('coupon-max').value = '';
+                await loadCoupons();
+                Swal.fire({...swalGlass, icon:'success', title:'Đã thêm mã!', timer:1300, showConfirmButton:false});
+            } catch(e) {
+                Swal.fire({...swalGlass, icon:'error', title:'Không thể thêm', text:e.message});
+            }
+        }
+
+        loadCoupons();
+    </script>
+
+    <!-- ═══ PRICING PACKAGES MANAGEMENT ═══ -->
+    <div class="tab-pane" data-pane="pricing">
+    <section class="card">
+        <h2>
+            <span style="display:flex;align-items:center;gap:8px">
+                <svg class="section-icon" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 13L2 9Z"/></svg>
+                Quản lý bảng giá
+            </span>
+            <span class="pill" id="pkgCount">0/3</span>
+        </h2>
+        <div id="pkgMsg" style="font-size:.85em;margin-bottom:8px"></div>
+        <div id="pkgList" style="display:flex;flex-direction:column;gap:12px"></div>
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.06)">
+            <h3 style="font-size:.9em;margin-bottom:12px;color:#ccc">Thêm gói mới</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <input id="pkg_name" placeholder="Tên gói (VD: Locket Gold Pro)">
+                <input id="pkg_price" placeholder="Giá (VD: 59000)" type="number">
+                <input id="pkg_duration" placeholder="Hạn sử dụng (VD: 1 năm)">
+                <input id="pkg_max_act" placeholder="Số lượt kích hoạt (VD: 2)" type="number">
+                <input id="pkg_desc" placeholder="Mô tả gói" style="grid-column:1/-1">
+                <input id="pkg_purchases" placeholder="Số lượt mua hiển thị (VD: 375)" type="number">
+                <textarea id="pkg_features" placeholder="Tính năng (mỗi dòng 1 tính năng)" style="grid-column:1/-1;min-height:80px"></textarea>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+                <label style="font-size:.85em;color:#aaa;display:flex;align-items:center;gap:6px">
+                    <input type="checkbox" id="pkg_featured"> Gói nổi bật
+                </label>
+                <button onclick="addPackage()" style="margin-left:auto">+ Thêm gói</button>
+            </div>
+        </div>
+    </section>
+    </div><!-- /pricing pane -->
+
+    <script>
+    async function loadPackages(){
+        const r=await fetch('/admin/api/packages');
+        const d=await r.json();
+        if(!d.success)return;
+        const list=document.getElementById('pkgList');
+        document.getElementById('pkgCount').textContent=d.packages.length+'/3';
+        if(!d.packages.length){list.innerHTML='<div class="empty">Chưa có gói nào</div>';return;}
+        list.innerHTML=d.packages.map(p=>{
+            const features=JSON.parse(p.features||'[]');
+            return `<div style="padding:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <strong style="color:#fbbf24">${p.name}</strong>
+                    <div style="display:flex;gap:6px">
+                        ${p.is_featured?'<span class="pill">Nổi bật</span>':''}
+                        <button onclick="deletePackage(${p.id})" style="background:rgba(255,100,100,.15);color:#ff6b6b;padding:4px 10px;font-size:.75em">Xóa</button>
+                    </div>
+                </div>
+                <div style="font-size:.85em;color:#aaa">Giá: ${new Intl.NumberFormat('vi-VN').format(p.price)}đ | Hạn: ${p.duration} | Kích hoạt: ${p.max_activations} lượt | Lượt mua: ${p.purchase_count}</div>
+                <div style="font-size:.8em;color:#777;margin-top:4px">${p.description}</div>
+                <div style="font-size:.8em;color:#666;margin-top:4px">${features.join(' | ')}</div>
+            </div>`;
+        }).join('');
+    }
+
+    async function addPackage(){
+        const name=document.getElementById('pkg_name').value.trim();
+        const price=parseInt(document.getElementById('pkg_price').value)||0;
+        const duration=document.getElementById('pkg_duration').value.trim()||'Vĩnh viễn';
+        const max_act=parseInt(document.getElementById('pkg_max_act').value)||1;
+        const desc=document.getElementById('pkg_desc').value.trim();
+        const purchases=parseInt(document.getElementById('pkg_purchases').value)||0;
+        const features=document.getElementById('pkg_features').value.split('\n').map(s=>s.trim()).filter(Boolean);
+        const featured=document.getElementById('pkg_featured').checked;
+        if(!name){document.getElementById('pkgMsg').textContent='Tên gói là bắt buộc';return;}
+        const r=await fetch('/admin/api/packages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,price,duration,max_activations:max_act,description:desc,purchase_count:purchases,features,is_featured:featured})});
+        const d=await r.json();
+        document.getElementById('pkgMsg').textContent=d.success?'Đã thêm!':d.error;
+        if(d.success){['pkg_name','pkg_price','pkg_duration','pkg_max_act','pkg_desc','pkg_purchases','pkg_features'].forEach(id=>document.getElementById(id).value='');document.getElementById('pkg_featured').checked=false;loadPackages();}
+    }
+
+    async function deletePackage(id){
+        if(!confirm('Xóa gói này?'))return;
+        await fetch('/admin/api/packages/'+id,{method:'DELETE'});
+        loadPackages();
+    }
+    loadPackages();
+    </script>
+
+    <!-- ═══ USER MANAGEMENT TAB ═══ -->
+    <div class="tab-pane" data-pane="users">
+        <section class="card">
+            <h2>
+                <span style="display:flex;align-items:center;gap:8px;">
+                    <svg class="section-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Quản lý tài khoản User
+                </span>
+            </h2>
+            <div style="display:flex;gap:8px;margin-bottom:16px">
+                <input id="userSearch" type="text" placeholder="Tìm kiếm username..." style="flex:1;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,215,0,.15);border-radius:10px;color:#fff;font-size:.9em">
+                <button onclick="searchUsers()" style="padding:10px 18px;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-weight:700;border:none;cursor:pointer">Tìm</button>
+            </div>
+            <div id="userMsg" style="font-size:.85em;margin-bottom:10px"></div>
+            <div id="userList" style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto"></div>
+            <p style="font-size:.78rem;color:#555;margin-top:12px">Tìm kiếm theo username. Click "Đổi mật khẩu" để reset password cho user.</p>
+        </section>
+    </div>
+
+    <script>
+    async function searchUsers(){
+        const q=document.getElementById('userSearch').value.trim();
+        const r=await fetch('/admin/api/users?q='+encodeURIComponent(q));
+        const d=await r.json();
+        const list=document.getElementById('userList');
+        if(!d.success||!d.users.length){list.innerHTML='<p style="color:#555;text-align:center">Không tìm thấy user nào.</p>';return;}
+        list.innerHTML=d.users.map(u=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:12px">
+            <div><strong style="color:#fff">${u.username}</strong><br><span style="font-size:.78rem;color:#555">ID: ${u.id} | Tạo: ${new Date(u.created_at*1000).toLocaleDateString('vi-VN')}</span></div>
+            <button onclick="changeUserPw(${u.id},'${u.username}')" style="padding:6px 14px;border-radius:8px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);color:#fbbf24;font-size:.8rem;font-weight:600;cursor:pointer">Đổi mật khẩu</button>
+        </div>`).join('');
+    }
+    async function changeUserPw(id,username){
+        const newPw=prompt('Nhập mật khẩu mới cho user "'+username+'" (tối thiểu 6 ký tự):');
+        if(!newPw||newPw.length<6){alert('Mật khẩu phải có ít nhất 6 ký tự');return;}
+        const r=await fetch('/admin/api/users/'+id+'/password',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:newPw})});
+        const d=await r.json();
+        document.getElementById('userMsg').textContent=d.success?'Đã đổi mật khẩu thành công!':'Lỗi: '+(d.error||'');
+        document.getElementById('userMsg').style.color=d.success?'#4ade80':'#f87171';
+    }
+    // Load all users initially
+    searchUsers();
+    </script>
+
+    <!-- ═══ DNS / PROFILE MANAGEMENT TAB ═══ -->
+    <div class="tab-pane" data-pane="dns">
+        <section class="card">
+            <h2>
+                <span style="display:flex;align-items:center;gap:8px;">
+                    <svg class="section-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/></svg>
+                    Upload DNS Profile (.mobileconfig)
+                </span>
+            </h2>
+            <div id="dnsMsg" style="font-size:.85em;margin-bottom:10px"></div>
+            <div id="dnsInfo" style="margin-bottom:14px"></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <input type="file" id="dnsFile" accept=".mobileconfig" style="font-size:.85em;color:#aaa">
+                <button onclick="uploadDns()" style="padding:10px 18px;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-weight:700;border:none;cursor:pointer">Upload</button>
+                <button onclick="deleteDns()" style="padding:10px 18px;border-radius:10px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#fca5a5;font-weight:600;cursor:pointer">Xóa</button>
+            </div>
+            <div id="dnsHistory" style="margin-top:16px"></div>
+        </section>
+
+        <section class="card" style="margin-top:18px">
+            <h2>
+                <span style="display:flex;align-items:center;gap:8px;">
+                    <svg class="section-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                    Video hướng dẫn (YouTube)
+                </span>
+            </h2>
+            <div style="display:flex;flex-direction:column;gap:10px">
+                <div>
+                    <div class="label">YouTube Video ID hoặc URL</div>
+                    <input id="videoUrl" type="text" placeholder="VD: DVEkn_AZd4w hoặc https://youtube.com/watch?v=..." style="width:100%;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,215,0,.15);border-radius:10px;color:#fff;font-size:.9em">
+                </div>
+                <div style="display:flex;gap:8px">
+                    <button onclick="saveVideoUrl()" style="padding:10px 18px;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-weight:700;border:none;cursor:pointer">Lưu</button>
+                    <button onclick="previewVideo()" style="padding:10px 18px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);color:#d4d4d8;font-weight:600;cursor:pointer">Xem trước</button>
+                </div>
+                <div id="videoMsg" style="font-size:.85em"></div>
+                <div id="videoPreview" style="display:none;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.08);margin-top:8px"></div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+    // --- DNS/Profile Management ---
+    async function loadDnsInfo(){
+        const r=await fetch('/admin/api/mobileconfig');const d=await r.json();
+        const info=document.getElementById('dnsInfo');
+        if(d.exists){
+            const date=new Date(d.modified_at*1000).toLocaleString('vi-VN');
+            info.innerHTML=`<div style="padding:12px 14px;background:rgba(34,197,94,.05);border:1px solid rgba(34,197,94,.15);border-radius:12px;font-size:.88rem">
+                <span style="color:#4ade80;font-weight:600">✓ Đã có file</span> — ${(d.size/1024).toFixed(1)} KB${d.signed?' (signed)':''} — cập nhật: ${date}
+            </div>`;
+        } else {
+            info.innerHTML='<div style="padding:12px 14px;background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.15);border-radius:12px;font-size:.88rem;color:#fca5a5">Chưa có file .mobileconfig nào.</div>';
+        }
+        // Load history
+        const rh=await fetch('/admin/api/mobileconfig/history');const dh=await rh.json();
+        const hist=document.getElementById('dnsHistory');
+        if(dh.items&&dh.items.length){
+            hist.innerHTML='<div class="label" style="margin-bottom:8px">Lịch sử cập nhật:</div>'+dh.items.map(it=>{
+                const dt=new Date(it.created_at*1000).toLocaleString('vi-VN');
+                return `<div style="font-size:.82rem;color:#71717a;padding:4px 0">${it.action==='upload'?'⬆️ Upload':'🗑️ Xóa'} — ${it.filename||'-'} — ${dt}</div>`;
+            }).join('');
+        }
+    }
+    async function uploadDns(){
+        const file=document.getElementById('dnsFile').files[0];
+        if(!file){document.getElementById('dnsMsg').textContent='Chọn file trước';document.getElementById('dnsMsg').style.color='#fca5a5';return;}
+        const fd=new FormData();fd.append('file',file);
+        const r=await fetch('/admin/api/mobileconfig',{method:'POST',body:fd});
+        const d=await r.json();
+        document.getElementById('dnsMsg').textContent=d.success?'Upload thành công!':'Lỗi: '+(d.error||'');
+        document.getElementById('dnsMsg').style.color=d.success?'#4ade80':'#fca5a5';
+        if(d.success) loadDnsInfo();
+    }
+    async function deleteDns(){
+        if(!confirm('Xóa file .mobileconfig hiện tại?'))return;
+        await fetch('/admin/api/mobileconfig',{method:'DELETE'});
+        document.getElementById('dnsMsg').textContent='Đã xóa';document.getElementById('dnsMsg').style.color='#4ade80';
+        loadDnsInfo();
+    }
+    loadDnsInfo();
+
+    // --- Video HD ---
+    async function loadVideoUrl(){
+        const r=await fetch('/admin/api/video-settings');const d=await r.json();
+        if(d.success&&d.video_url) document.getElementById('videoUrl').value=d.video_url;
+    }
+    async function saveVideoUrl(){
+        const url=document.getElementById('videoUrl').value.trim();
+        const r=await fetch('/admin/api/video-settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({video_url:url})});
+        const d=await r.json();
+        document.getElementById('videoMsg').textContent=d.success?'Đã lưu!':'Lỗi';
+        document.getElementById('videoMsg').style.color=d.success?'#4ade80':'#fca5a5';
+    }
+    function previewVideo(){
+        const raw=document.getElementById('videoUrl').value.trim();
+        let videoId=raw;
+        if(raw.includes('youtube.com/watch')){const u=new URL(raw);videoId=u.searchParams.get('v');}
+        else if(raw.includes('youtu.be/')){videoId=raw.split('youtu.be/')[1].split('?')[0];}
+        if(!videoId){document.getElementById('videoMsg').textContent='Nhập video ID hoặc URL';document.getElementById('videoMsg').style.color='#fca5a5';return;}
+        const prev=document.getElementById('videoPreview');
+        prev.style.display='block';
+        prev.innerHTML=`<iframe src="https://www.youtube.com/embed/${videoId}" style="width:100%;aspect-ratio:16/9;border:0;display:block" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe>`;
+    }
+    loadVideoUrl();
+    </script>
+
+    <!-- ═══ LOCKET 15s SETTINGS TAB ═══ -->
+    <div class="tab-pane" data-pane="locket15s">
+        <section class="card">
+            <h2>
+                <span style="display:flex;align-items:center;gap:8px;">
+                    <svg class="section-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Nội dung hướng dẫn Locket 15s
+                </span>
+            </h2>
+            <p style="font-size:.85em;color:#71717a;margin-bottom:12px">Soạn nội dung hướng dẫn (HTML) hiển thị trên trang /locket15s</p>
+            <div id="l15sEditorWrap">
+                <div id="l15sEditor" style="height:250px"></div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:12px;gap:8px">
+                <button onclick="saveL15sGuide()" style="padding:10px 20px;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-weight:700;border:none;cursor:pointer">Lưu hướng dẫn</button>
+            </div>
+            <div id="l15sGuideMsg" style="font-size:.85em;margin-top:8px"></div>
+        </section>
+
+        <section class="card" style="margin-top:18px">
+            <h2>
+                <span style="display:flex;align-items:center;gap:8px;">
+                    <svg class="section-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                    Video hướng dẫn Locket 15s
+                </span>
+            </h2>
+            <div style="display:flex;flex-direction:column;gap:10px">
+                <div>
+                    <div class="label">Video URL (YouTube hoặc link trực tiếp)</div>
+                    <input id="l15sVideoUrl" type="text" placeholder="VD: https://youtube.com/watch?v=... hoặc link .mp4" style="width:100%;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,215,0,.15);border-radius:10px;color:#fff;font-size:.9em">
+                </div>
+                <div style="display:flex;gap:8px">
+                    <button onclick="saveL15sVideo()" style="padding:10px 18px;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-weight:700;border:none;cursor:pointer">Lưu Video</button>
+                </div>
+                <div id="l15sVideoMsg" style="font-size:.85em"></div>
+            </div>
+        </section>
+
+        <section class="card" style="margin-top:18px">
+            <h2>
+                <span style="display:flex;align-items:center;gap:8px;">
+                    <svg class="section-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Upload DNS Config (.mobileconfig)
+                </span>
+            </h2>
+            <div id="l15sDnsMsg" style="font-size:.85em;margin-bottom:10px"></div>
+            <div id="l15sDnsInfo" style="margin-bottom:14px"></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <input type="file" id="l15sDnsFile" accept=".mobileconfig" style="font-size:.85em;color:#aaa">
+                <button onclick="uploadL15sDns()" style="padding:10px 18px;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-weight:700;border:none;cursor:pointer">Upload DNS</button>
+                <button onclick="deleteL15sDns()" style="padding:10px 18px;border-radius:10px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#fca5a5;font-weight:600;cursor:pointer">Xóa DNS</button>
+            </div>
+        </section>
+    </div>
+
+    <script>
+    // --- Locket 15s Management ---
+    let l15sQuill = null;
+
+    function initL15sEditor(){
+        if(l15sQuill) return;
+        l15sQuill = new Quill('#l15sEditor', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    [{ 'header': [2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    ['link', 'image'],
+                    ['clean']
+                ]
+            },
+            placeholder: 'Nhập nội dung hướng dẫn Locket 15s...'
+        });
+    }
+
+    async function loadL15sData(){
+        initL15sEditor();
+        try {
+            const r = await fetch('/admin/api/locket15s');
+            const d = await r.json();
+            if(!d.success) return;
+
+            // Guide HTML
+            if(d.guide_html && l15sQuill){
+                l15sQuill.root.innerHTML = d.guide_html;
+            }
+
+            // Video URL
+            if(d.video_url){
+                document.getElementById('l15sVideoUrl').value = d.video_url;
+            }
+
+            // DNS info
+            const info = document.getElementById('l15sDnsInfo');
+            if(d.dns_exists){
+                info.innerHTML = `<div style="padding:12px 14px;background:rgba(34,197,94,.05);border:1px solid rgba(34,197,94,.15);border-radius:12px;font-size:.88rem">
+                    <span style="color:#4ade80;font-weight:600">✓ Đã có file DNS</span> — ${(d.dns_size/1024).toFixed(1)} KB
+                </div>`;
+            } else {
+                info.innerHTML = '<div style="padding:12px 14px;background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.15);border-radius:12px;font-size:.88rem;color:#fca5a5">Chưa upload file DNS.</div>';
+            }
+        } catch(e) {
+            console.error('Load locket15s error:', e);
+        }
+    }
+
+    async function saveL15sGuide(){
+        const html = l15sQuill ? l15sQuill.root.innerHTML : '';
+        const r = await fetch('/admin/api/locket15s/guide', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({guide_html: html})
+        });
+        const d = await r.json();
+        const msg = document.getElementById('l15sGuideMsg');
+        msg.textContent = d.success ? 'Đã lưu hướng dẫn!' : 'Lỗi khi lưu';
+        msg.style.color = d.success ? '#4ade80' : '#fca5a5';
+    }
+
+    async function saveL15sVideo(){
+        const url = document.getElementById('l15sVideoUrl').value.trim();
+        const r = await fetch('/admin/api/locket15s/video', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({video_url: url})
+        });
+        const d = await r.json();
+        const msg = document.getElementById('l15sVideoMsg');
+        msg.textContent = d.success ? 'Đã lưu video!' : 'Lỗi';
+        msg.style.color = d.success ? '#4ade80' : '#fca5a5';
+    }
+
+    async function uploadL15sDns(){
+        const file = document.getElementById('l15sDnsFile').files[0];
+        if(!file){
+            document.getElementById('l15sDnsMsg').textContent = 'Chọn file trước';
+            document.getElementById('l15sDnsMsg').style.color = '#fca5a5';
+            return;
+        }
+        const fd = new FormData();
+        fd.append('file', file);
+        const r = await fetch('/admin/api/locket15s/dns', {method:'POST', body:fd});
+        const d = await r.json();
+        const msg = document.getElementById('l15sDnsMsg');
+        msg.textContent = d.success ? 'Upload DNS thành công!' : 'Lỗi: '+(d.error||'');
+        msg.style.color = d.success ? '#4ade80' : '#fca5a5';
+        if(d.success) loadL15sData();
+    }
+
+    async function deleteL15sDns(){
+        if(!confirm('Xóa file DNS config?')) return;
+        await fetch('/admin/api/locket15s/dns', {method:'DELETE'});
+        document.getElementById('l15sDnsMsg').textContent = 'Đã xóa DNS';
+        document.getElementById('l15sDnsMsg').style.color = '#4ade80';
+        loadL15sData();
+    }
+
+    // Load on tab switch
+    document.addEventListener('DOMContentLoaded', ()=>{
+        const observer = new MutationObserver(()=>{
+            const pane = document.querySelector('[data-pane="locket15s"]');
+            if(pane && pane.classList.contains('active') && !l15sQuill){
+                loadL15sData();
+            }
+        });
+        const wrap = document.querySelector('.wrap');
+        if(wrap) observer.observe(wrap, {subtree:true, attributes:true, attributeFilter:['class']});
+    });
+    </script>
+
+    <!-- ═══ CONTACT BUBBLE SETTINGS ═══ -->
+    <div class="tab-pane" data-pane="contact">
+    <section class="card">
+        <h2>
+            <span style="display:flex;align-items:center;gap:8px">
+                <svg class="section-icon" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                Bong bóng liên hệ
+            </span>
+        </h2>
+        <div id="bubbleMsg" style="font-size:.85em;margin-bottom:10px"></div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+            <label style="font-size:.85em;color:#aaa;display:flex;align-items:center;gap:8px">
+                <input type="checkbox" id="bubble_enabled"> Bật bong bóng liên hệ
+            </label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <select id="bubble_type" style="background:rgba(255,255,255,.03);color:#fff;border:1px solid rgba(255,215,0,.15);border-radius:10px;padding:9px 12px;font-size:.9em">
+                    <option value="zalo">Zalo</option>
+                    <option value="phone">Số điện thoại</option>
+                </select>
+                <input id="bubble_phone" placeholder="Số điện thoại (VD: 0901234567)">
+            </div>
+            <input id="bubble_zalo" placeholder="Link Zalo (VD: https://zalo.me/0901234567)" style="width:100%;background:rgba(255,255,255,.03);color:#fff;border:1px solid rgba(255,215,0,.15);border-radius:10px;padding:9px 12px;font-size:.9em">
+            <button onclick="saveBubble()">Lưu cài đặt</button>
+        </div>
+    </section>
+    </div><!-- /contact pane -->
+
+    <script>
+    async function loadBubble(){
+        const r=await fetch('/admin/api/contact-bubble');
+        const d=await r.json();
+        if(!d.success)return;
+        const b=d.contact_bubble;
+        document.getElementById('bubble_enabled').checked=b.enabled;
+        document.getElementById('bubble_type').value=b.type||'zalo';
+        document.getElementById('bubble_phone').value=b.phone||'';
+        document.getElementById('bubble_zalo').value=b.zalo_link||'';
+    }
+
+    async function saveBubble(){
+        const r=await fetch('/admin/api/contact-bubble',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+            enabled:document.getElementById('bubble_enabled').checked,
+            type:document.getElementById('bubble_type').value,
+            phone:document.getElementById('bubble_phone').value.trim(),
+            zalo_link:document.getElementById('bubble_zalo').value.trim()
+        })});
+        const d=await r.json();
+        document.getElementById('bubbleMsg').textContent=d.success?'Đã lưu!':'Lỗi';
+        document.getElementById('bubbleMsg').style.color=d.success?'#4caf50':'#f44336';
+    }
+    loadBubble();
+    </script>
+
+    <!-- Contact Bubble on Admin Page -->
+    <div style="position:fixed;bottom:24px;right:24px;z-index:9999;display:none" id="adminBubble">
+        <a id="adminBubbleLink" href="#" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 4px 20px rgba(245,158,11,.4);transition:all .3s;animation:bounce-admin 2s infinite">
+            <svg width="28" height="28" fill="none" stroke="#000" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </a>
+    </div>
+    <style>@keyframes bounce-admin{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}</style>
+    <script>
+    // Show bubble on admin page too
+    fetch('/admin/api/contact-bubble').then(r=>r.json()).then(d=>{
+        if(d.success&&d.contact_bubble&&d.contact_bubble.enabled){
+            const el=document.getElementById('adminBubble');
+            const link=document.getElementById('adminBubbleLink');
+            el.style.display='block';
+            if(d.contact_bubble.type==='phone') link.href='tel:'+d.contact_bubble.phone;
+            else {
+                const zaloLink=d.contact_bubble.zalo_link||'';
+                link.href=zaloLink.startsWith('http')?zaloLink:('https://zalo.me/'+zaloLink.replace(/\D/g,''));
+            }
+        }
+    }).catch(()=>{});
     </script>
 </body>
 </html>

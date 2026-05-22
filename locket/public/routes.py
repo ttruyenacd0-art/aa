@@ -247,16 +247,113 @@ def queue_status():
 
 # ─── PAYMENT ROUTES ───────────────────────────────────────────────────────────
 
+@bp.route("/api/coupon/validate", methods=["POST"])
+def public_coupon_validate():
+    """Kiểm tra mã giảm giá có hợp lệ không."""
+    data = request.json or {}
+    code = (data.get("code") or "").strip().upper().replace(" ", "")
+    if not code:
+        return jsonify({"success": False, "msg": "Vui lòng nhập mã giảm giá"}), 400
+
+    conn = db.get_conn()
+    row = conn.execute(
+        "SELECT * FROM coupons WHERE code=? AND enabled=1", (code,)
+    ).fetchone()
+    if not row:
+        return jsonify({"success": False, "msg": "Mã giảm giá không tồn tại hoặc đã hết hạn"}), 404
+
+    if row["max_uses"] is not None and row["used_count"] >= row["max_uses"]:
+        return jsonify({"success": False, "msg": "Mã giảm giá đã hết lượt sử dụng"}), 410
+
+    return jsonify({
+        "success": True,
+        "discount_percent": row["discount_percent"],
+        "code": row["code"],
+    })
+
+
 @bp.route("/api/payment/create", methods=["POST"])
 def payment_create():
     """Tạo payment mới, trả về payment_id và thông tin chuyển khoản."""
     data = request.json or {}
     username = (data.get("username") or "").strip()
+    package_id = data.get("package_id")
+    if package_id is not None:
+        try:
+            package_id = int(package_id)
+        except (ValueError, TypeError):
+            package_id = None
+    coupon_code = (data.get("coupon_code") or "").strip().upper().replace(" ", "")
+
     if not username:
         return jsonify({"success": False, "msg": "Username is required"}), 400
 
     now = time.time()
     conn = db.get_conn()
+
+    # ─── UPGRADE-ONLY CHECK: Không được mua gói rẻ hơn gói hiện tại ───────────
+    # (Bỏ qua check nếu gói mới có giá 0đ — gói miễn phí luôn được mua)
+    user_id = session.get("user_id")
+    if user_id and package_id:
+        # Kiểm tra giá gói mới
+        new_pkg_check = conn.execute(
+            "SELECT price FROM pricing_packages WHERE id=?", (package_id,)
+        ).fetchone()
+        # Chỉ check upgrade nếu gói mới có giá > 0 (gói 0đ cho phép mua luôn)
+        if new_pkg_check and new_pkg_check["price"] > 0:
+            # Tìm gói hiện tại của user
+            current_purchase = conn.execute(
+                "SELECT package_id FROM gold_purchases WHERE user_id=? AND package_id IS NOT NULL ORDER BY purchased_at DESC LIMIT 1",
+                (user_id,)
+            ).fetchone()
+            if not current_purchase:
+                current_purchase = conn.execute(
+                    "SELECT package_id FROM gold_activations WHERE user_id=? ORDER BY activated_at DESC LIMIT 1",
+                    (user_id,)
+                ).fetchone()
+            if current_purchase and current_purchase["package_id"]:
+                current_pkg = conn.execute(
+                    "SELECT price, name FROM pricing_packages WHERE id=?",
+                    (current_purchase["package_id"],)
+                ).fetchone()
+                if current_pkg and new_pkg_check["price"] <= current_pkg["price"]:
+                    return jsonify({
+                        "success": False,
+                        "msg": f"Bạn đang sử dụng gói \"{current_pkg['name']}\" ({current_pkg['price']:,}đ). Chỉ được nâng cấp lên gói cao hơn."
+                    }), 400
+
+    # Lấy giá từ gói nếu có package_id, ngược lại dùng giá mặc định
+    cfg = _get_payment_cfg()
+    pkg = None
+    pkg_code = ""
+    if package_id:
+        pkg = conn.execute(
+            "SELECT * FROM pricing_packages WHERE id=? AND enabled=1", (package_id,)
+        ).fetchone()
+        if not pkg:
+            return jsonify({"success": False, "msg": "Gói dịch vụ không tồn tại"}), 404
+        original_amount = pkg["price"]
+        # Tạo mã gói cho nội dung CK: lấy tên gói, bỏ dấu cách, viết hoa
+        pkg_code = pkg["name"].upper().replace(" ", "")
+    else:
+        original_amount = int(cfg.get("amount", 20000))
+        pkg_code = cfg.get("description_prefix", "LOCKET")
+
+    final_amount = original_amount
+
+    # Áp dụng mã giảm giá nếu có
+    applied_coupon = None
+    if coupon_code:
+        coupon = conn.execute(
+            "SELECT * FROM coupons WHERE code=? AND enabled=1", (coupon_code,)
+        ).fetchone()
+        if not coupon:
+            return jsonify({"success": False, "msg": "Mã giảm giá không hợp lệ"}), 400
+        if coupon["max_uses"] is not None and coupon["used_count"] >= coupon["max_uses"]:
+            return jsonify({"success": False, "msg": "Mã giảm giá đã hết lượt sử dụng"}), 400
+        discount = int(original_amount * coupon["discount_percent"] / 100)
+        final_amount = max(original_amount - discount, 0)
+        applied_coupon = coupon
 
     # Huỷ các payment pending cũ của username này
     conn.execute(
@@ -264,13 +361,49 @@ def payment_create():
         (username,)
     )
 
-    cfg = _get_payment_cfg()
-    PAYMENT_AMOUNT = int(cfg.get("amount", 20000))
+    # Tăng used_count cho coupon
+    if applied_coupon:
+        conn.execute("UPDATE coupons SET used_count = used_count + 1 WHERE code=?", (coupon_code,))
+
+    # ─── FREE PACKAGE (0đ): Xác nhận ngay, không cần chuyển khoản ─────────────
+    if final_amount == 0:
+        payment_id = str(uuid.uuid4())[:8].upper()
+        conn.execute(
+            "INSERT INTO payments (payment_id, username, amount, status, created_at, confirmed_at, min_tx_id, package_id, coupon_code, original_amount) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (payment_id, username, 0, "confirmed", now, now, 0, package_id, coupon_code, original_amount)
+        )
+        # Ghi gold_purchases nếu user đang login
+        if user_id and package_id:
+            # Xóa gói cũ
+            conn.execute(
+                "DELETE FROM gold_purchases WHERE user_id=? AND package_id IS NOT NULL AND package_id!=?",
+                (user_id, package_id)
+            )
+            dup = conn.execute(
+                "SELECT 1 FROM gold_purchases WHERE user_id=? AND payment_id=?",
+                (user_id, payment_id)
+            ).fetchone()
+            if not dup:
+                conn.execute(
+                    "INSERT INTO gold_purchases (user_id, locket_username, payment_id, package_id, purchased_at) VALUES (?,?,?,?,?)",
+                    (user_id, username, payment_id, package_id, now)
+                )
+        return jsonify({
+            "success": True,
+            "payment_id": payment_id,
+            "amount": 0,
+            "original_amount": original_amount,
+            "discount_percent": applied_coupon["discount_percent"] if applied_coupon else 0,
+            "package_name": pkg["name"] if pkg else "",
+            "status": "confirmed",
+            "free": True,
+        })
+
+    # ─── NORMAL PAYMENT: Tạo pending payment và trả QR ────────────────────────
     bank_type = cfg.get("bank_type", "acb").lower()
     bank_api_url = cfg.get("mb_api_url", "") if bank_type == "mb" else cfg.get("acb_api_url", "")
 
-    # Lấy max transactionID hiện tại để làm mốc — chỉ chấp nhận tx mới hơn
-    # ACB: max(int ID), MB: hash của ID đầu tiên trong list (mới nhất)
+    # Lấy max transactionID hiện tại để làm mốc
     min_tx_id = 0
     try:
         snap_resp = _requests.get(bank_api_url, timeout=8)
@@ -278,27 +411,34 @@ def payment_create():
         existing_txs = snap_resp.json().get("transactions", [])
         if existing_txs:
             if bank_type == "mb":
-                # MB trả danh sách theo thứ tự mới → cũ; snapshot hash của tx mới nhất
                 min_tx_id = _normalize_tx_id(existing_txs[0].get("transactionID"))
             else:
                 min_tx_id = max(_normalize_tx_id(t.get("transactionID")) for t in existing_txs)
     except Exception:
-        min_tx_id = 0  # fallback: không lọc được, nhưng vẫn tạo payment
+        min_tx_id = 0
 
     payment_id = str(uuid.uuid4())[:8].upper()
+
+    # Nội dung chuyển khoản = MÃ GÓI + tên đăng nhập
+    # VD: LOCKETGOLDPRO tinophan
+    transfer_description = f"{pkg_code} {username}"
+
     conn.execute(
-        "INSERT INTO payments (payment_id, username, amount, status, created_at, min_tx_id) VALUES (?,?,?,?,?,?)",
-        (payment_id, username, PAYMENT_AMOUNT, "pending", now, min_tx_id)
+        "INSERT INTO payments (payment_id, username, amount, status, created_at, min_tx_id, package_id, coupon_code, original_amount) VALUES (?,?,?,?,?,?,?,?,?)",
+        (payment_id, username, final_amount, "pending", now, min_tx_id, package_id, coupon_code, original_amount)
     )
 
     return jsonify({
         "success": True,
         "payment_id": payment_id,
-        "amount": PAYMENT_AMOUNT,
+        "amount": final_amount,
+        "original_amount": original_amount,
+        "discount_percent": applied_coupon["discount_percent"] if applied_coupon else 0,
+        "package_name": pkg["name"] if pkg else "",
         "bank_account": cfg.get("bank_account", ""),
         "bank_name": cfg.get("bank_name", "ACB"),
         "account_name": cfg.get("account_name", ""),
-        "description": f"{cfg.get('description_prefix', 'LOCKET')} {username}",
+        "description": transfer_description,
         "expire_at": int(now + PAYMENT_EXPIRE_SECONDS),
     })
 
@@ -351,16 +491,16 @@ def _row_get(row, key, default=None):
         return default
 
 
-def _find_matching_tx(transactions, username_lower, min_tx_id, conn, min_amount=20000, bank_type="acb"):
+def _find_matching_tx(transactions, match_keyword, min_tx_id, conn, min_amount=20000, bank_type="acb"):
     """Tìm giao dịch mới nhất khớp với payment.
-    Hỗ trợ cả ACB (transactionID số nguyên) và MB (transactionID string như FT...).
+    match_keyword: string cần tìm trong description (đã lowercase).
+    Có thể là "packagecode username" hoặc chỉ "username".
+    Tất cả các phần (split by space) phải xuất hiện trong description.
 
-    - ACB: transactionID là int, so sánh > min_tx_id
-    - MB:  transactionID là string (FT...), min_tx_id là hash của tx mới nhất lúc snapshot.
-           Bỏ qua tx có hash == min_tx_id (đã tồn tại), hoặc hash < min_tx_id không hợp lệ.
-           Thực tế MB list theo thứ tự mới → cũ nên các tx mới sẽ ở đầu list.
+    Hỗ trợ cả ACB (transactionID số nguyên) và MB (transactionID string như FT...).
     """
     is_mb = bank_type == "mb"
+    keyword_parts = match_keyword.strip().split()
 
     for tx in transactions:
         raw_tx_id = tx.get("transactionID")
@@ -369,13 +509,9 @@ def _find_matching_tx(transactions, username_lower, min_tx_id, conn, min_amount=
 
         # --- Lọc giao dịch đã tồn tại trước khi tạo payment ---
         if is_mb:
-            # MB: min_tx_id = hash của tx MỚI NHẤT lúc snapshot.
-            # Tx nào có hash == min_tx_id là tx cuối cùng đã biết → bỏ qua nó và mọi tx sau.
-            # Tx mới hơn (chưa có lúc snapshot) sẽ có hash khác.
             if norm_tx_id == min_tx_id and min_tx_id != 0:
-                break  # đến tx đã biết → dừng (phần còn lại cũ hơn)
+                break
         else:
-            # ACB: int so sánh thẳng
             if norm_tx_id <= min_tx_id:
                 continue
 
@@ -391,7 +527,8 @@ def _find_matching_tx(transactions, username_lower, min_tx_id, conn, min_amount=
             continue
 
         desc = (tx.get("description") or "").lower()
-        if username_lower not in desc:
+        # Tất cả keyword_parts phải có trong description
+        if not all(part in desc for part in keyword_parts):
             continue
 
         # Dedup: kiểm tra tx này chưa được dùng cho payment nào khác
@@ -402,7 +539,7 @@ def _find_matching_tx(transactions, username_lower, min_tx_id, conn, min_amount=
         if used:
             continue
 
-        return dedup_key  # string ID (ACB: "2501", MB: "FT25062999583597")
+        return dedup_key
     return None
 
 
@@ -412,17 +549,30 @@ def _confirm_payment_and_save(conn, payment_id, username, tx_id, now):
         "UPDATE payments SET status='confirmed', confirmed_at=?, transaction_id=? WHERE payment_id=?",
         (now, tx_id, payment_id)
     )
+    # Lấy package_id từ payment record
+    payment_row = conn.execute(
+        "SELECT package_id FROM payments WHERE payment_id=?", (payment_id,)
+    ).fetchone()
+    pkg_id = payment_row["package_id"] if payment_row else None
+
     user_id = session.get("user_id")
     account_user = session.get("user_name")
     if user_id:
+        # Nếu user nâng cấp gói mới → xóa gói cũ trong gold_purchases (chỉ giữ gói mới nhất)
+        if pkg_id:
+            # Xóa các bản ghi gold_purchases cũ có package_id khác (gói cũ)
+            conn.execute(
+                "DELETE FROM gold_purchases WHERE user_id=? AND package_id IS NOT NULL AND package_id!=?",
+                (user_id, pkg_id)
+            )
         dup = conn.execute(
             "SELECT 1 FROM gold_purchases WHERE user_id=? AND locket_username=? AND payment_id=?",
             (user_id, username, payment_id)
         ).fetchone()
         if not dup:
             conn.execute(
-                "INSERT INTO gold_purchases (user_id, locket_username, payment_id, purchased_at) VALUES (?,?,?,?)",
-                (user_id, username, payment_id, now)
+                "INSERT INTO gold_purchases (user_id, locket_username, payment_id, package_id, purchased_at) VALUES (?,?,?,?,?)",
+                (user_id, username, payment_id, pkg_id, now)
             )
     # Gửi thông báo Telegram
     cfg = _get_payment_cfg()
@@ -462,7 +612,16 @@ def payment_check():
     except Exception as e:
         return jsonify({"success": True, "status": "pending", "msg": f"Bank API error: {e}"})
 
-    tx_id = _find_matching_tx(transactions, row["username"].lower(), _row_get(row, "min_tx_id", 0), conn, int(_cfg.get("amount", 20000)), bank_type)
+    # Build match keyword: nếu có package_id thì dùng pkg_code + username
+    match_keyword = row["username"].lower()
+    pkg_id = _row_get(row, "package_id")
+    if pkg_id:
+        pkg = conn.execute("SELECT name FROM pricing_packages WHERE id=?", (pkg_id,)).fetchone()
+        if pkg:
+            pkg_code = pkg["name"].upper().replace(" ", "").lower()
+            match_keyword = f"{pkg_code} {row['username'].lower()}"
+
+    tx_id = _find_matching_tx(transactions, match_keyword, _row_get(row, "min_tx_id", 0), conn, int(row["amount"]), bank_type)
     if tx_id:
         _confirm_payment_and_save(conn, payment_id, row["username"], tx_id, now)
         return jsonify({"success": True, "status": "confirmed", "username": row["username"]})
@@ -550,14 +709,15 @@ def auth_me():
     if not user:
         session.clear()
         return jsonify({"success": False, "logged_in": False})
-    purchases = conn.execute(
-        "SELECT locket_username, purchased_at FROM gold_purchases WHERE user_id=? ORDER BY purchased_at DESC",
+    # Chỉ lấy từ gold_activations (đã kích hoạt thực sự), không phải gold_purchases (chỉ thanh toán chưa kích hoạt)
+    activations = conn.execute(
+        "SELECT locket_username, activated_at FROM gold_activations WHERE user_id=? ORDER BY activated_at DESC",
         (user_id,)
     ).fetchall()
     items = [
         {"locket_username": r["locket_username"],
-         "purchased_at": r["purchased_at"]}
-        for r in purchases
+         "purchased_at": r["activated_at"]}
+        for r in activations
     ]
     return jsonify({
         "success": True,
@@ -565,6 +725,39 @@ def auth_me():
         "username": user["username"],
         "gold_history": items,
     })
+
+
+# ─── PAYMENT CANCEL ────────────────────────────────────────────────────────────
+
+@bp.route("/api/payment/cancel", methods=["POST"])
+def payment_cancel():
+    """Người dùng bấm 'Hủy giao dịch' → hủy payment pending."""
+    data = request.json or {}
+    payment_id = (data.get("payment_id") or "").strip()
+    if not payment_id:
+        return jsonify({"success": False, "msg": "payment_id is required"}), 400
+
+    conn = db.get_conn()
+    row = conn.execute(
+        "SELECT * FROM payments WHERE payment_id=?", (payment_id,)
+    ).fetchone()
+    if not row:
+        return jsonify({"success": False, "msg": "Không tìm thấy giao dịch"}), 404
+    if row["status"] != "pending":
+        return jsonify({"success": False, "msg": "Giao dịch không thể hủy (trạng thái: {})".format(row["status"])}), 400
+
+    conn.execute(
+        "UPDATE payments SET status='expired' WHERE payment_id=?", (payment_id,)
+    )
+
+    # Hoàn lại lượt coupon nếu đã áp dụng
+    if row["coupon_code"]:
+        conn.execute(
+            "UPDATE coupons SET used_count = MAX(used_count - 1, 0) WHERE code=?",
+            (row["coupon_code"],)
+        )
+
+    return jsonify({"success": True, "msg": "Đã hủy giao dịch thành công"})
 
 
 # ─── PAYMENT CONFIRM (manual trigger) ─────────────────────────────────────────
@@ -598,7 +791,15 @@ def payment_confirm_now():
     except Exception as e:
         return jsonify({"success": False, "msg": f"Không thể kết nối ngân hàng: {e}"}), 502
 
-    tx_id = _find_matching_tx(transactions, row["username"].lower(), _row_get(row, "min_tx_id", 0), conn, int(_cfg2.get("amount", 20000)), bank_type2)
+    # Build match keyword cho confirm-now
+    match_keyword2 = row["username"].lower()
+    pkg_id2 = _row_get(row, "package_id")
+    if pkg_id2:
+        pkg2 = conn.execute("SELECT name FROM pricing_packages WHERE id=?", (pkg_id2,)).fetchone()
+        if pkg2:
+            match_keyword2 = f"{pkg2['name'].upper().replace(' ', '').lower()} {row['username'].lower()}"
+
+    tx_id = _find_matching_tx(transactions, match_keyword2, _row_get(row, "min_tx_id", 0), conn, int(row["amount"]), bank_type2)
     if tx_id:
         _confirm_payment_and_save(conn, payment_id, row["username"], tx_id, now)
         return jsonify({"success": True, "status": "confirmed", "username": row["username"]})
@@ -615,7 +816,7 @@ def payment_confirm_now():
 @bp.route("/api/gold/reactivate", methods=["POST"])
 def gold_reactivate():
     """Kích hoạt lại Gold cho locket_username đã có trong lịch sử mua của user.
-    Không cần thanh toán lại — chỉ cần xác nhận đã mua trước đó."""
+    Không cần thanh toán lại — chỉ cần xác nhận đã mua trước đó VÀ user có gói hợp lệ."""
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"success": False, "msg": "Bạn chưa đăng nhập"}), 401
@@ -626,13 +827,33 @@ def gold_reactivate():
         return jsonify({"success": False, "msg": "locket_username is required"}), 400
 
     conn = db.get_conn()
-    # Kiểm tra user đã từng mua locket_username này chưa
+
+    # Kiểm tra user có gói đã thanh toán thực sự (payment_id NOT NULL = đã qua thanh toán)
+    valid_purchase = conn.execute(
+        "SELECT id, package_id FROM gold_purchases WHERE user_id=? AND payment_id IS NOT NULL AND package_id IS NOT NULL ORDER BY purchased_at DESC LIMIT 1",
+        (user_id,)
+    ).fetchone()
+    if not valid_purchase:
+        return jsonify({"success": False, "msg": "Bạn chưa mua gói nào. Vui lòng mua gói trước khi kích hoạt lại."}), 403
+
+    # Kiểm tra user đã từng kích hoạt locket_username này chưa (từ gold_activations)
     purchase = conn.execute(
-        "SELECT id FROM gold_purchases WHERE user_id=? AND locket_username=? LIMIT 1",
+        "SELECT id FROM gold_activations WHERE user_id=? AND locket_username=? LIMIT 1",
         (user_id, locket_username)
     ).fetchone()
     if not purchase:
-        return jsonify({"success": False, "msg": "Không tìm thấy lịch sử mua Gold cho username này"}), 403
+        return jsonify({"success": False, "msg": "Không tìm thấy lịch sử kích hoạt Gold cho username này"}), 403
+
+    # Kiểm tra giới hạn kích hoạt của gói
+    pkg_id = valid_purchase["package_id"]
+    pkg = conn.execute("SELECT * FROM pricing_packages WHERE id=?", (pkg_id,)).fetchone()
+    if pkg:
+        used = conn.execute(
+            "SELECT COUNT(*) as c FROM gold_activations WHERE user_id=? AND package_id=?",
+            (user_id, pkg_id)
+        ).fetchone()["c"]
+        if used >= pkg["max_activations"]:
+            return jsonify({"success": False, "msg": f"Đã hết lượt kích hoạt ({used}/{pkg['max_activations']}). Vui lòng nâng cấp gói."}), 403
 
     # Gửi thông báo Telegram
     import threading
@@ -717,14 +938,21 @@ def _link_pending_payments_to_user(conn, user_id: int, payment_ids: list):
         ).fetchone()
         if not row:
             continue
+        pkg_id = _row_get(row, "package_id")
         dup = conn.execute(
             "SELECT 1 FROM gold_purchases WHERE user_id=? AND payment_id=?",
             (user_id, pid)
         ).fetchone()
         if not dup:
+            # Nếu có package_id mới → xóa gói cũ
+            if pkg_id:
+                conn.execute(
+                    "DELETE FROM gold_purchases WHERE user_id=? AND package_id IS NOT NULL AND package_id!=?",
+                    (user_id, pkg_id)
+                )
             conn.execute(
-                "INSERT INTO gold_purchases (user_id, locket_username, payment_id, purchased_at) VALUES (?,?,?,?)",
-                (user_id, row["username"], pid, now)
+                "INSERT INTO gold_purchases (user_id, locket_username, payment_id, package_id, purchased_at) VALUES (?,?,?,?,?)",
+                (user_id, row["username"], pid, pkg_id, now)
             )
             linked += 1
     return linked
@@ -745,3 +973,231 @@ def payment_link_to_account():
     conn = db.get_conn()
     linked = _link_pending_payments_to_user(conn, user_id, payment_ids)
     return jsonify({"success": True, "linked": linked})
+
+
+
+# ─── LOCKET 15s PAGE & API ─────────────────────────────────────────────────────
+
+@bp.route("/locket15s")
+def locket15s_page():
+    return render_template("locket15s.html")
+
+
+@bp.route("/api/locket15s", methods=["GET"])
+def locket15s_content():
+    """Public API: trả về nội dung trang Locket 15s (hướng dẫn text, video, DNS info)."""
+    import json as _json
+    conn = db.get_conn()
+
+    # Lấy guide HTML
+    row = conn.execute("SELECT value FROM site_settings WHERE key='locket15s_guide'").fetchone()
+    guide_html = ""
+    if row:
+        try:
+            guide_html = _json.loads(row["value"]).get("html", "")
+        except Exception:
+            guide_html = row["value"] if isinstance(row["value"], str) else ""
+
+    # Lấy video URL
+    row2 = conn.execute("SELECT value FROM site_settings WHERE key='locket15s_video'").fetchone()
+    video_url = ""
+    if row2:
+        try:
+            video_url = _json.loads(row2["value"]).get("url", "")
+        except Exception:
+            video_url = ""
+
+    # Check DNS file exists
+    dns_path = os.path.join(current_app.root_path, "static", "locket15s_dns.mobileconfig")
+    has_dns = os.path.exists(dns_path)
+
+    return jsonify({
+        "success": True,
+        "guide_html": guide_html,
+        "video_url": video_url,
+        "has_dns": has_dns,
+    })
+
+
+@bp.route("/api/locket15s/dns-download", methods=["GET"])
+def locket15s_dns_download():
+    """Download DNS config file cho Locket 15s."""
+    dns_path = os.path.join(current_app.root_path, "static", "locket15s_dns.mobileconfig")
+    if not os.path.exists(dns_path):
+        return jsonify({"success": False, "msg": "DNS config chưa được upload"}), 404
+    return send_file(
+        dns_path,
+        mimetype="application/x-apple-aspen-config",
+        as_attachment=False,
+        download_name="locket15s_dns.mobileconfig",
+    )
+
+
+# ─── PRICING PAGE & PACKAGES API ──────────────────────────────────────────────
+
+@bp.route("/pricing")
+def pricing_page():
+    return render_template("pricing.html")
+
+
+@bp.route("/activate")
+def activate_page():
+    return render_template("activate.html")
+
+
+@bp.route("/login")
+def login_page():
+    """Trang đăng nhập người dùng."""
+    if session.get("user_id"):
+        from flask import redirect
+        return redirect("/activate")
+    return render_template("login.html")
+
+
+@bp.route("/register")
+def register_page():
+    """Trang đăng ký người dùng."""
+    if session.get("user_id"):
+        from flask import redirect
+        return redirect("/activate")
+    return render_template("register.html")
+
+
+@bp.route("/api/packages", methods=["GET"])
+def packages_list():
+    """Public API: list enabled pricing packages."""
+    conn = db.get_conn()
+    rows = conn.execute(
+        "SELECT * FROM pricing_packages WHERE enabled=1 ORDER BY sort_order ASC, id ASC"
+    ).fetchall()
+    packages = []
+    for r in rows:
+        packages.append({
+            "id": r["id"],
+            "name": r["name"],
+            "price": r["price"],
+            "duration": r["duration"],
+            "description": r["description"],
+            "features": r["features"],
+            "purchase_count": r["purchase_count"],
+            "max_activations": r["max_activations"],
+            "is_featured": bool(r["is_featured"]),
+        })
+    return jsonify({"success": True, "packages": packages})
+
+
+@bp.route("/api/user-package", methods=["GET"])
+def user_package():
+    """Return the package info for current logged-in user (based on their purchases)."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "msg": "Chua dang nhap"}), 401
+
+    conn = db.get_conn()
+
+    # Tìm gói mới nhất mà user đã mua (từ gold_purchases có package_id VÀ payment_id)
+    purchase = conn.execute(
+        "SELECT package_id FROM gold_purchases WHERE user_id=? AND package_id IS NOT NULL AND payment_id IS NOT NULL ORDER BY purchased_at DESC LIMIT 1",
+        (user_id,)
+    ).fetchone()
+
+    pkg_id = None
+    if purchase:
+        pkg_id = purchase["package_id"]
+
+    # Nếu không tìm thấy package_id nào → user chưa mua gói
+    if not pkg_id:
+        return jsonify({"success": True, "package": None, "activations_used": 0})
+
+    pkg = conn.execute(
+        "SELECT * FROM pricing_packages WHERE id=?", (pkg_id,)
+    ).fetchone()
+    if not pkg:
+        return jsonify({"success": True, "package": None, "activations_used": 0})
+
+    # Count activations used
+    activations_used = conn.execute(
+        "SELECT COUNT(*) as c FROM gold_activations WHERE user_id=? AND package_id=?",
+        (user_id, pkg_id)
+    ).fetchone()["c"]
+
+    return jsonify({
+        "success": True,
+        "package": {
+            "id": pkg["id"],
+            "name": pkg["name"],
+            "price": pkg["price"],
+            "duration": pkg["duration"],
+            "description": pkg["description"],
+            "max_activations": pkg["max_activations"],
+        },
+        "activations_used": activations_used,
+    })
+
+
+@bp.route("/api/gold/activate", methods=["POST"])
+def gold_activate():
+    """Activate Gold for a locket_username - only works if user has purchased a package."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "msg": "Chua dang nhap"}), 401
+
+    data = request.json or {}
+    locket_username = (data.get("locket_username") or "").strip()
+    if not locket_username:
+        return jsonify({"success": False, "msg": "Locket username la bat buoc"}), 400
+
+    conn = db.get_conn()
+
+    # Get user's current package — CHỈ từ gold_purchases có payment_id (đã thanh toán thực)
+    # Không fallback từ gold_activations để tránh user chưa mua gói vẫn activate được
+    purchase = conn.execute(
+        "SELECT package_id FROM gold_purchases WHERE user_id=? AND package_id IS NOT NULL AND payment_id IS NOT NULL ORDER BY purchased_at DESC LIMIT 1",
+        (user_id,)
+    ).fetchone()
+
+    pkg_id = None
+    if purchase:
+        pkg_id = purchase["package_id"]
+
+    if not pkg_id:
+        return jsonify({"success": False, "msg": "Bạn chưa mua gói nào. Vui lòng mua gói trước."}), 403
+
+    pkg = conn.execute("SELECT * FROM pricing_packages WHERE id=?", (pkg_id,)).fetchone()
+    if not pkg:
+        return jsonify({"success": False, "msg": "Goi khong ton tai"}), 404
+
+    # Check activation limit
+    used = conn.execute(
+        "SELECT COUNT(*) as c FROM gold_activations WHERE user_id=? AND package_id=?",
+        (user_id, pkg_id)
+    ).fetchone()["c"]
+
+    if used >= pkg["max_activations"]:
+        return jsonify({"success": False, "msg": f"Da het luot kich hoat ({used}/{pkg['max_activations']})"}), 403
+
+    # Add to queue
+    rotator = current_app.rotator
+    qm = current_app.queue_manager
+    if rotator is None or rotator.size() == 0:
+        return jsonify({"success": False, "msg": "Chua co tai khoan Locket. Admin hay them qua /admin."}), 503
+
+    client_id = qm.add_to_queue(locket_username)
+    if client_id is None:
+        return jsonify({"success": False, "msg": "Queue dang day, vui long thu lai sau."}), 503
+
+    # Record activation
+    now = time.time()
+    conn.execute(
+        "INSERT INTO gold_activations (user_id, package_id, locket_username, activated_at, status) VALUES (?,?,?,?,?)",
+        (user_id, pkg_id, locket_username, now, "active")
+    )
+
+    status = qm.get_status(client_id)
+    return jsonify({
+        "success": True,
+        "client_id": client_id,
+        "position": status["position"],
+        "total_queue": status["total_queue"],
+        "estimated_time": status["estimated_time"],
+    })

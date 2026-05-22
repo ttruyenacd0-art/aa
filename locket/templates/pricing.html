@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bảng Giá - Locket Gold</title>
+    <link rel="icon" href="https://sf-static.upanhlaylink.com/img/image_202601296d59cc036b9dbae09695b98cf9310a6b.jpg" type="image/jpeg">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Outfit',sans-serif;background:#0a0a0a;color:#fff;min-height:100vh;overflow-x:hidden}
+        a{text-decoration:none;color:inherit}
+
+        /* Animated background */
+        .bg-gradient{position:fixed;inset:0;z-index:-1;overflow:hidden}
+        .bg-gradient::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(ellipse at 30% 20%,rgba(245,158,11,.06) 0%,transparent 50%),radial-gradient(ellipse at 70% 80%,rgba(217,119,6,.04) 0%,transparent 50%);animation:drift 20s ease-in-out infinite alternate}
+        @keyframes drift{0%{transform:translate(0,0) rotate(0deg)}100%{transform:translate(-3%,3%) rotate(2deg)}}
+
+        /* Header */
+        .header{position:fixed;top:0;left:0;right:0;z-index:50;background:rgba(10,10,10,.85);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid rgba(255,255,255,.06)}
+        .header-inner{max-width:1200px;margin:0 auto;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
+        .logo{display:flex;align-items:center;gap:12px}
+        .logo img{width:40px;height:40px;border-radius:50%;border:2px solid rgba(245,158,11,.3);box-shadow:0 0 12px rgba(245,158,11,.2)}
+        .logo span{font-size:1.4rem;font-weight:900;background:linear-gradient(135deg,#fde68a,#f59e0b,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-transform:uppercase;letter-spacing:.5px}
+        .nav{display:flex;align-items:center;gap:12px}
+        .nav a{padding:8px 18px;font-size:.85rem;font-weight:500;color:#a1a1aa;border:1px solid rgba(255,255,255,.1);border-radius:999px;transition:all .3s;backdrop-filter:blur(4px)}
+        .nav a:hover{border-color:rgba(245,158,11,.4);color:#fbbf24;background:rgba(245,158,11,.05)}
+        .nav .btn-start{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-weight:700;border:none;padding:10px 24px;box-shadow:0 4px 16px rgba(245,158,11,.3)}
+        .nav .btn-start:hover{box-shadow:0 6px 24px rgba(245,158,11,.5);transform:translateY(-1px)}
+        @media(max-width:768px){.nav{display:none}}
+
+        /* Mobile menu */
+        .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:50;background:rgba(10,10,10,.95);backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,.08);padding:12px 16px;gap:8px}
+        @media(max-width:768px){.mobile-nav{display:flex;justify-content:space-around}}
+        .mobile-nav a{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:.7rem;color:#6b7280;transition:color .3s}
+        .mobile-nav a.active{color:#f59e0b}
+        .mobile-nav a svg{width:20px;height:20px}
+
+        /* Pricing Section */
+        .pricing-section{padding:130px 24px 120px;position:relative}
+        .section-inner{max-width:1200px;margin:0 auto}
+
+        /* Section Header */
+        .section-header{text-align:center;margin-bottom:56px}
+        .section-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);padding:6px 16px;border-radius:999px;font-size:.75rem;font-weight:600;color:#fbbf24;text-transform:uppercase;letter-spacing:1px;margin-bottom:20px}
+        .section-badge svg{width:14px;height:14px}
+        .section-header h1{font-size:clamp(2.5rem,6vw,3.8rem);font-weight:900;letter-spacing:-1.5px;margin-bottom:16px;line-height:1.1}
+        .section-header h1 .gold{background:linear-gradient(135deg,#fde68a,#f59e0b,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .section-header p{color:#71717a;font-size:1.1rem;max-width:520px;margin:0 auto;line-height:1.6}
+
+        /* Packages Grid */
+        .packages-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;max-width:1100px;margin:0 auto}
+        @media(max-width:700px){.packages-grid{grid-template-columns:1fr;max-width:400px}}
+
+        /* Package Card */
+        .package-card{position:relative;border-radius:24px;padding:2px;background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02));transition:all .4s cubic-bezier(.4,0,.2,1);overflow:hidden}
+        .package-card:hover{transform:translateY(-4px);background:linear-gradient(135deg,rgba(255,255,255,.1),rgba(255,255,255,.04))}
+        .package-card.featured{background:linear-gradient(135deg,#f59e0b,#d97706,#92400e);box-shadow:0 8px 40px rgba(245,158,11,.15),0 0 0 1px rgba(245,158,11,.1)}
+        .package-card.featured:hover{box-shadow:0 16px 60px rgba(245,158,11,.25),0 0 0 1px rgba(245,158,11,.2);transform:translateY(-6px)}
+        .package-inner{background:rgba(10,10,10,.97);border-radius:22px;padding:32px;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden}
+        .package-inner::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.1),transparent)}
+
+        /* Featured glow effect */
+        .package-card.featured .package-inner::after{content:'';position:absolute;top:-50%;right:-50%;width:100%;height:100%;background:radial-gradient(circle,rgba(245,158,11,.03) 0%,transparent 70%);pointer-events:none}
+
+        .package-badge{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;padding:5px 12px;border-radius:999px;margin-bottom:16px;width:fit-content;box-shadow:0 2px 8px rgba(245,158,11,.3)}
+        .package-name{font-size:1.6rem;font-weight:800;margin-bottom:6px;letter-spacing:-.5px}
+        .package-desc{color:#52525b;font-size:.85rem;margin-bottom:16px;line-height:1.5}
+        .package-purchases{display:flex;align-items:center;gap:6px;color:#71717a;font-size:.8rem;margin-bottom:20px}
+        .package-purchases svg{width:14px;height:14px;color:#f59e0b}
+        .package-purchases span{color:#f59e0b;font-weight:700}
+
+        .package-price{margin-bottom:4px;display:flex;align-items:baseline;gap:4px}
+        .package-price .amount{font-size:2.6rem;font-weight:900;letter-spacing:-1.5px;background:linear-gradient(135deg,#fff,#d4d4d8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .package-card.featured .package-price .amount{background:linear-gradient(135deg,#fde68a,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .package-duration{color:#52525b;font-size:.82rem;margin-bottom:24px;display:flex;align-items:center;gap:6px}
+        .package-duration svg{width:14px;height:14px;color:#71717a}
+
+        .package-divider{height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent);margin-bottom:20px}
+
+        .package-features{list-style:none;display:flex;flex-direction:column;gap:12px;margin-bottom:32px;flex:1}
+        .package-features li{display:flex;align-items:flex-start;gap:10px;font-size:.88rem;color:#a1a1aa;line-height:1.4}
+        .package-features li .check{width:20px;height:20px;min-width:20px;border-radius:50%;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);display:flex;align-items:center;justify-content:center;margin-top:1px}
+        .package-features li .check svg{width:12px;height:12px;color:#4ade80}
+        .package-card.featured .package-features li .check{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.2)}
+        .package-card.featured .package-features li .check svg{color:#fbbf24}
+
+        .package-btn{width:100%;padding:14px;border-radius:14px;font-size:.95rem;font-weight:700;border:none;cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);text-align:center;display:block;font-family:inherit;position:relative;overflow:hidden}
+        .package-btn.gold{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;box-shadow:0 4px 16px rgba(245,158,11,.3)}
+        .package-btn.gold:hover{box-shadow:0 8px 32px rgba(245,158,11,.5);transform:translateY(-2px)}
+        .package-btn.outline{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);color:#d4d4d8}
+        .package-btn.outline:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.2);color:#fff}
+
+        /* No packages fallback */
+        .no-packages{text-align:center;color:#52525b;font-size:1.1rem;padding:80px 0}
+        .no-packages svg{width:48px;height:48px;margin-bottom:16px;color:#3f3f46}
+
+        /* Trust badges */
+        .trust-section{max-width:800px;margin:60px auto 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:20px}
+        .trust-item{display:flex;align-items:center;gap:12px;padding:16px 20px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:16px}
+        .trust-item svg{width:24px;height:24px;color:#f59e0b;flex-shrink:0}
+        .trust-item span{font-size:.85rem;color:#71717a;line-height:1.3}
+
+        /* Contact Bubble */
+        .contact-bubble{position:fixed;bottom:90px;right:24px;z-index:9999}
+        @media(min-width:769px){.contact-bubble{bottom:24px}}
+        .contact-bubble a{display:flex;align-items:center;justify-content:center;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 6px 24px rgba(245,158,11,.4),0 0 0 4px rgba(245,158,11,.1);transition:all .3s cubic-bezier(.4,0,.2,1);animation:pulse-bubble 3s ease-in-out infinite}
+        .contact-bubble a:hover{transform:scale(1.12);box-shadow:0 8px 32px rgba(245,158,11,.6),0 0 0 6px rgba(245,158,11,.15)}
+        .contact-bubble a svg{width:28px;height:28px;color:#000}
+        .contact-bubble .bubble-label{position:absolute;right:70px;top:50%;transform:translateY(-50%);background:rgba(10,10,10,.95);border:1px solid rgba(245,158,11,.2);padding:8px 14px;border-radius:10px;font-size:.8rem;font-weight:600;color:#fbbf24;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .3s}
+        .contact-bubble:hover .bubble-label{opacity:1}
+        @keyframes pulse-bubble{0%,100%{box-shadow:0 6px 24px rgba(245,158,11,.4),0 0 0 4px rgba(245,158,11,.1)}50%{box-shadow:0 6px 24px rgba(245,158,11,.5),0 0 0 8px rgba(245,158,11,.05)}}
+
+        /* Scrollbar */
+        ::-webkit-scrollbar{width:6px}
+        ::-webkit-scrollbar-track{background:transparent}
+        ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+        ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.2)}
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+
+    <header class="header">
+        <div class="header-inner">
+            <a href="/" class="logo">
+                <img src="https://sf-static.upanhlaylink.com/img/image_20260129415b4b531beb8c3c98aacc4ddfbabea2.jpg" alt="Locket Gold">
+                <span>Locket Gold</span>
+            </a>
+            <nav class="nav">
+                <a href="/">Trang chủ</a>
+                <a href="/pricing">Bảng giá</a>
+                <a href="/locket15s">Locket 15s</a>
+                <a href="/login">Đăng nhập</a>
+                <a href="/activate" class="btn-start">Kích hoạt Gold</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Mobile Bottom Nav -->
+    <nav class="mobile-nav">
+        <a href="/">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            Trang chủ
+        </a>
+        <a href="/pricing" class="active">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+            Bảng giá
+        </a>
+        <a href="/activate">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            Kích hoạt
+        </a>
+        <a href="/login">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+            Tài khoản
+        </a>
+    </nav>
+
+    <section class="pricing-section">
+        <div class="section-inner">
+            <div class="section-header">
+                <div class="section-badge">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                    Bảng giá dịch vụ
+                </div>
+                <h1>Nâng cấp <span class="gold">Locket Gold</span></h1>
+                <p>Chọn gói nâng cấp phù hợp với bạn. Thanh toán nhanh chóng, kích hoạt tự động chỉ trong vài phút.</p>
+            </div>
+
+            <div class="packages-grid" id="packagesGrid">
+                <div class="no-packages">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                    <p>Đang tải bảng giá...</p>
+                </div>
+            </div>
+
+            <!-- Trust Badges -->
+            <div class="trust-section">
+                <div class="trust-item">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    <span>Bảo mật & An toàn 100%</span>
+                </div>
+                <div class="trust-item">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    <span>Kích hoạt tự động trong 2-5 phút</span>
+                </div>
+                <div class="trust-item">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                    <span>Hỗ trợ 24/7 qua Zalo</span>
+                </div>
+                <div class="trust-item">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                    <span>5000+ khách hàng tin tưởng</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Bubble (luon hien) -->
+    <div class="contact-bubble" id="contactBubble">
+        <span class="bubble-label" id="bubbleLabel">Liên hệ hỗ trợ</span>
+        <a id="contactLink" href="#" target="_blank" rel="noopener noreferrer">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+        </a>
+    </div>
+
+    <script>
+    function formatPrice(price){
+        return new Intl.NumberFormat('vi-VN').format(price) + ' đ';
+    }
+
+    function renderPackages(packages){
+        const grid = document.getElementById('packagesGrid');
+        if(!packages || packages.length===0){
+            grid.innerHTML=`<div class="no-packages">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                <p>Chưa có gói nào. Vui lòng quay lại sau.</p>
+            </div>`;
+            return;
+        }
+        grid.innerHTML = packages.map(pkg => {
+            const features = JSON.parse(pkg.features || '[]');
+            const isFeatured = pkg.is_featured;
+            return `
+            <div class="package-card ${isFeatured?'featured':''}">
+                <div class="package-inner">
+                    ${isFeatured?`<div class="package-badge">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                        Phổ biến nhất
+                    </div>`:''}
+                    <div class="package-name">${pkg.name}</div>
+                    <div class="package-desc">${pkg.description}</div>
+                    <div class="package-purchases">
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <span>${pkg.purchase_count.toLocaleString()}</span> lượt mua
+                    </div>
+                    <div class="package-price"><span class="amount">${formatPrice(pkg.price)}</span></div>
+                    <div class="package-duration">
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        ${pkg.duration}
+                    </div>
+                    <div class="package-divider"></div>
+                    <ul class="package-features">
+                        ${features.map(f=>`<li><span class="check"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>${f}</li>`).join('')}
+                    </ul>
+                    <a href="/activate" class="package-btn ${isFeatured?'gold':'outline'}">
+                        ${isFeatured?'Nâng cấp ngay':'Chọn gói này'}
+                    </a>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // Load packages
+    fetch('/api/packages').then(r=>r.json()).then(data=>{
+        if(data.success) renderPackages(data.packages);
+        else document.getElementById('packagesGrid').innerHTML=`<div class="no-packages"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg><p>Không thể tải bảng giá.</p></div>`;
+    }).catch(()=>{
+        document.getElementById('packagesGrid').innerHTML=`<div class="no-packages"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg><p>Lỗi kết nối. Vui lòng thử lại.</p></div>`;
+    });
+
+    // Load contact bubble settings + popup notification
+    fetch('/api/site-settings').then(r=>r.json()).then(data=>{
+        const bubble = data.contact_bubble;
+        if(bubble && bubble.enabled){
+            const link=document.getElementById('contactLink');
+            if(bubble.type==='phone') link.href='tel:'+bubble.phone;
+            else {
+                const zaloLink = bubble.zalo_link||'';
+                link.href = zaloLink.startsWith('http') ? zaloLink : ('https://zalo.me/' + zaloLink.replace(/\D/g,''));
+            }
+            if(bubble.label) document.getElementById('bubbleLabel').textContent=bubble.label;
+        } else {
+            document.getElementById('contactBubble').style.display='none';
+        }
+
+        // Popup notification
+        const p = data.popup || {};
+        if(p.enabled && p.message && window.Swal){
+            Swal.fire({
+                icon: p.icon || 'info',
+                title: p.title || 'Thông báo',
+                html: p.message,
+                background: 'rgba(20,20,20,.95)',
+                color: '#fff',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#f59e0b',
+                customClass: { htmlContainer: 'popup-rich' },
+            });
+        }
+    }).catch(()=>{
+        document.getElementById('contactBubble').style.display='none';
+    });
+    </script>
+
+    <!-- SweetAlert2 for popup notifications -->
+    <link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-dark@4/dark.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .popup-rich p{margin:.25rem 0}.popup-rich a{color:#f59e0b;text-decoration:underline}
+        .popup-rich strong{color:#fff;font-weight:600}
+    </style>
+</body>
+</html>

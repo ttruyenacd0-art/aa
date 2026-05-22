@@ -577,3 +577,396 @@ def bank_history():
         "count": len(normalized),
         "transactions": normalized,
     })
+
+
+
+# ─── PRICING PACKAGES MANAGEMENT ──────────────────────────────────────────────
+
+MAX_PACKAGES = 10
+
+
+@bp.route("/api/packages", methods=["GET"])
+@admin_required
+def admin_packages_list():
+    conn = db.get_conn()
+    rows = conn.execute(
+        "SELECT * FROM pricing_packages ORDER BY sort_order ASC, id ASC"
+    ).fetchall()
+    packages = []
+    for r in rows:
+        packages.append({
+            "id": r["id"],
+            "name": r["name"],
+            "price": r["price"],
+            "duration": r["duration"],
+            "description": r["description"],
+            "features": r["features"],
+            "purchase_count": r["purchase_count"],
+            "max_activations": r["max_activations"],
+            "is_featured": bool(r["is_featured"]),
+            "sort_order": r["sort_order"],
+            "enabled": bool(r["enabled"]),
+            "created_at": r["created_at"],
+        })
+    return jsonify({"success": True, "packages": packages})
+
+
+@bp.route("/api/packages", methods=["POST"])
+@admin_required
+def admin_packages_add():
+    conn = db.get_conn()
+    count = conn.execute("SELECT COUNT(*) as c FROM pricing_packages").fetchone()["c"]
+    if count >= MAX_PACKAGES:
+        return jsonify({"success": False, "error": f"Toi da {MAX_PACKAGES} goi"}), 400
+
+    body = request.get_json(silent=True) or {}
+    name = (body.get("name") or "").strip()
+    price = body.get("price", 0)
+    duration = (body.get("duration") or "Vinh vien").strip()
+    description = (body.get("description") or "").strip()
+    features = body.get("features", [])
+    max_activations = int(body.get("max_activations", 1))
+    is_featured = bool(body.get("is_featured", False))
+    purchase_count = int(body.get("purchase_count", 0))
+
+    if not name:
+        return jsonify({"success": False, "error": "Ten goi la bat buoc"}), 400
+    if not isinstance(features, list):
+        features = []
+
+    import json as _json
+    now = time.time()
+    conn.execute(
+        "INSERT INTO pricing_packages (name, price, duration, description, features, purchase_count, max_activations, is_featured, sort_order, enabled, created_at) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        (name, int(price), duration, description, _json.dumps(features), purchase_count, max_activations, 1 if is_featured else 0, count, 1, now)
+    )
+    return jsonify({"success": True})
+
+
+@bp.route("/api/packages/<int:pkg_id>", methods=["PUT"])
+@admin_required
+def admin_packages_update(pkg_id):
+    conn = db.get_conn()
+    row = conn.execute("SELECT id FROM pricing_packages WHERE id=?", (pkg_id,)).fetchone()
+    if not row:
+        return jsonify({"success": False, "error": "Khong tim thay goi"}), 404
+
+    body = request.get_json(silent=True) or {}
+    name = (body.get("name") or "").strip()
+    price = body.get("price", 0)
+    duration = (body.get("duration") or "Vinh vien").strip()
+    description = (body.get("description") or "").strip()
+    features = body.get("features", [])
+    max_activations = int(body.get("max_activations", 1))
+    is_featured = bool(body.get("is_featured", False))
+    purchase_count = int(body.get("purchase_count", 0))
+    enabled = bool(body.get("enabled", True))
+
+    if not name:
+        return jsonify({"success": False, "error": "Ten goi la bat buoc"}), 400
+    if not isinstance(features, list):
+        features = []
+
+    import json as _json
+    conn.execute(
+        "UPDATE pricing_packages SET name=?, price=?, duration=?, description=?, features=?, purchase_count=?, max_activations=?, is_featured=?, enabled=? WHERE id=?",
+        (name, int(price), duration, description, _json.dumps(features), purchase_count, max_activations, 1 if is_featured else 0, 1 if enabled else 0, pkg_id)
+    )
+    return jsonify({"success": True})
+
+
+@bp.route("/api/packages/<int:pkg_id>", methods=["DELETE"])
+@admin_required
+def admin_packages_delete(pkg_id):
+    conn = db.get_conn()
+    # Remove related activations first (foreign key constraint)
+    conn.execute("DELETE FROM gold_activations WHERE package_id=?", (pkg_id,))
+    conn.execute("DELETE FROM pricing_packages WHERE id=?", (pkg_id,))
+    return jsonify({"success": True})
+
+
+# ─── CONTACT BUBBLE SETTINGS ──────────────────────────────────────────────────
+
+@bp.route("/api/contact-bubble", methods=["GET"])
+@admin_required
+def contact_bubble_get():
+    return jsonify({"success": True, "contact_bubble": site_settings.get_contact_bubble()})
+
+
+@bp.route("/api/contact-bubble", methods=["PUT"])
+@admin_required
+def contact_bubble_set():
+    body = request.get_json(silent=True) or {}
+    saved = site_settings.set_contact_bubble(body)
+    return jsonify({"success": True, "contact_bubble": saved})
+
+
+# ─── COUPONS (Mã giảm giá) ───────────────────────────────────────────────────
+
+@bp.route("/api/coupons", methods=["GET"])
+@admin_required
+def coupons_list():
+    conn = db.get_conn()
+    rows = conn.execute("SELECT * FROM coupons ORDER BY created_at DESC").fetchall()
+    items = [
+        {
+            "id": r["id"],
+            "code": r["code"],
+            "discount_percent": r["discount_percent"],
+            "max_uses": r["max_uses"],
+            "used_count": r["used_count"],
+            "enabled": bool(r["enabled"]),
+            "created_at": r["created_at"],
+        }
+        for r in rows
+    ]
+    return jsonify({"success": True, "coupons": items})
+
+
+@bp.route("/api/coupons", methods=["POST"])
+@admin_required
+def coupons_add():
+    body = request.get_json(silent=True) or {}
+    code = (body.get("code") or "").strip().upper().replace(" ", "")
+    discount_percent = body.get("discount_percent", 0)
+    max_uses = body.get("max_uses")
+
+    if not code:
+        return jsonify({"success": False, "error": "Mã giảm giá là bắt buộc"}), 400
+    try:
+        discount_percent = int(discount_percent)
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "error": "Phần trăm giảm giá không hợp lệ"}), 400
+    if discount_percent < 1 or discount_percent > 100:
+        return jsonify({"success": False, "error": "Phần trăm phải từ 1-100"}), 400
+
+    if max_uses is not None and max_uses != "":
+        try:
+            max_uses = int(max_uses)
+        except (ValueError, TypeError):
+            max_uses = None
+    else:
+        max_uses = None
+
+    conn = db.get_conn()
+    existing = conn.execute("SELECT 1 FROM coupons WHERE code=?", (code,)).fetchone()
+    if existing:
+        return jsonify({"success": False, "error": f"Mã '{code}' đã tồn tại"}), 409
+
+    conn.execute(
+        "INSERT INTO coupons (code, discount_percent, max_uses, used_count, enabled, created_at) VALUES (?,?,?,0,1,?)",
+        (code, discount_percent, max_uses, time.time())
+    )
+    return jsonify({"success": True})
+
+
+@bp.route("/api/coupons/<int:coupon_id>", methods=["PUT"])
+@admin_required
+def coupons_update(coupon_id):
+    body = request.get_json(silent=True) or {}
+    conn = db.get_conn()
+    row = conn.execute("SELECT * FROM coupons WHERE id=?", (coupon_id,)).fetchone()
+    if not row:
+        return jsonify({"success": False, "error": "Không tìm thấy mã"}), 404
+
+    enabled = body.get("enabled", row["enabled"])
+    conn.execute(
+        "UPDATE coupons SET enabled=? WHERE id=?",
+        (1 if enabled else 0, coupon_id)
+    )
+    return jsonify({"success": True})
+
+
+@bp.route("/api/coupons/<int:coupon_id>", methods=["DELETE"])
+@admin_required
+def coupons_delete(coupon_id):
+    conn = db.get_conn()
+    conn.execute("DELETE FROM coupons WHERE id=?", (coupon_id,))
+    return jsonify({"success": True})
+
+
+# ─── USER MANAGEMENT ──────────────────────────────────────────────────────────
+
+@bp.route("/api/users", methods=["GET"])
+@admin_required
+def users_list():
+    q = (request.args.get("q") or "").strip()
+    conn = db.get_conn()
+    if q:
+        rows = conn.execute(
+            "SELECT id, username, created_at FROM user_accounts WHERE username LIKE ? ORDER BY created_at DESC LIMIT 50",
+            (f"%{q}%",)
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT id, username, created_at FROM user_accounts ORDER BY created_at DESC LIMIT 50"
+        ).fetchall()
+    users = [{"id": r["id"], "username": r["username"], "created_at": r["created_at"]} for r in rows]
+    return jsonify({"success": True, "users": users})
+
+
+@bp.route("/api/users/<int:user_id>/password", methods=["PUT"])
+@admin_required
+def users_change_password(user_id):
+    import hashlib
+    body = request.get_json(silent=True) or {}
+    password = (body.get("password") or "").strip()
+    if len(password) < 6:
+        return jsonify({"success": False, "error": "Mật khẩu phải có ít nhất 6 ký tự"}), 400
+
+    salted = "LOCKET_SALT_2025:" + password
+    password_hash = hashlib.sha256(salted.encode()).hexdigest()
+
+    conn = db.get_conn()
+    row = conn.execute("SELECT id FROM user_accounts WHERE id=?", (user_id,)).fetchone()
+    if not row:
+        return jsonify({"success": False, "error": "User không tồn tại"}), 404
+
+    conn.execute("UPDATE user_accounts SET password_hash=? WHERE id=?", (password_hash, user_id))
+    return jsonify({"success": True})
+
+
+# ─── VIDEO SETTINGS ───────────────────────────────────────────────────────────
+
+@bp.route("/api/video-settings", methods=["GET"])
+@admin_required
+def video_settings_get():
+    conn = db.get_conn()
+    row = conn.execute("SELECT value FROM site_settings WHERE key='video_url'").fetchone()
+    video_url = ""
+    if row:
+        try:
+            import json as _json
+            video_url = _json.loads(row["value"]).get("url", "")
+        except Exception:
+            video_url = row["value"] if isinstance(row["value"], str) else ""
+    return jsonify({"success": True, "video_url": video_url})
+
+
+@bp.route("/api/video-settings", methods=["PUT"])
+@admin_required
+def video_settings_set():
+    body = request.get_json(silent=True) or {}
+    video_url = (body.get("video_url") or "").strip()
+    import json as _json
+    payload = _json.dumps({"url": video_url})
+    conn = db.get_conn()
+    conn.execute(
+        "INSERT INTO site_settings (key, value, updated_at) VALUES (?,?,?) "
+        "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
+        ("video_url", payload, time.time()),
+    )
+    return jsonify({"success": True})
+
+
+# ─── LOCKET 15s SETTINGS ──────────────────────────────────────────────────────
+
+@bp.route("/api/locket15s", methods=["GET"])
+@admin_required
+def locket15s_get():
+    """Lấy cài đặt trang Locket 15s (guide HTML, video URL, DNS info)."""
+    import json as _json
+    conn = db.get_conn()
+
+    # Guide HTML
+    row = conn.execute("SELECT value FROM site_settings WHERE key='locket15s_guide'").fetchone()
+    guide_html = ""
+    if row:
+        try:
+            guide_html = _json.loads(row["value"]).get("html", "")
+        except Exception:
+            guide_html = row["value"] if isinstance(row["value"], str) else ""
+
+    # Video URL
+    row2 = conn.execute("SELECT value FROM site_settings WHERE key='locket15s_video'").fetchone()
+    video_url = ""
+    if row2:
+        try:
+            video_url = _json.loads(row2["value"]).get("url", "")
+        except Exception:
+            video_url = ""
+
+    # DNS file info
+    dns_path = os.path.join(current_app.root_path, "static", "locket15s_dns.mobileconfig")
+    dns_exists = os.path.exists(dns_path)
+    dns_size = os.path.getsize(dns_path) if dns_exists else 0
+
+    return jsonify({
+        "success": True,
+        "guide_html": guide_html,
+        "video_url": video_url,
+        "dns_exists": dns_exists,
+        "dns_size": dns_size,
+    })
+
+
+@bp.route("/api/locket15s/guide", methods=["PUT"])
+@admin_required
+def locket15s_guide_set():
+    """Cập nhật nội dung hướng dẫn (HTML) cho trang Locket 15s."""
+    import json as _json
+    body = request.get_json(silent=True) or {}
+    guide_html = (body.get("guide_html") or "").strip()
+    payload = _json.dumps({"html": guide_html})
+    conn = db.get_conn()
+    conn.execute(
+        "INSERT INTO site_settings (key, value, updated_at) VALUES (?,?,?) "
+        "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
+        ("locket15s_guide", payload, time.time()),
+    )
+    return jsonify({"success": True})
+
+
+@bp.route("/api/locket15s/video", methods=["PUT"])
+@admin_required
+def locket15s_video_set():
+    """Cập nhật video URL cho trang Locket 15s."""
+    import json as _json
+    body = request.get_json(silent=True) or {}
+    video_url = (body.get("video_url") or "").strip()
+    payload = _json.dumps({"url": video_url})
+    conn = db.get_conn()
+    conn.execute(
+        "INSERT INTO site_settings (key, value, updated_at) VALUES (?,?,?) "
+        "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
+        ("locket15s_video", payload, time.time()),
+    )
+    return jsonify({"success": True})
+
+
+MAX_DNS_FILE_BYTES = 5 * 1024 * 1024  # 5 MB
+
+
+@bp.route("/api/locket15s/dns", methods=["POST"])
+@admin_required
+def locket15s_dns_upload():
+    """Upload DNS config file (.mobileconfig) cho trang Locket 15s."""
+    f = request.files.get("file")
+    if f is None or not f.filename:
+        return jsonify({"success": False, "error": "Missing file"}), 400
+
+    blob = f.read(MAX_DNS_FILE_BYTES + 1)
+    if len(blob) == 0:
+        return jsonify({"success": False, "error": "Empty file"}), 400
+    if len(blob) > MAX_DNS_FILE_BYTES:
+        return jsonify({"success": False, "error": "File too large (max 5 MB)"}), 400
+
+    target = os.path.join(current_app.root_path, "static", "locket15s_dns.mobileconfig")
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    tmp = target + ".tmp"
+    with open(tmp, "wb") as out:
+        out.write(blob)
+    os.replace(tmp, target)
+    st = os.stat(target)
+    return jsonify({"success": True, "size": st.st_size})
+
+
+@bp.route("/api/locket15s/dns", methods=["DELETE"])
+@admin_required
+def locket15s_dns_delete():
+    """Xóa DNS config file."""
+    dns_path = os.path.join(current_app.root_path, "static", "locket15s_dns.mobileconfig")
+    if os.path.exists(dns_path):
+        os.remove(dns_path)
+    return jsonify({"success": True})
