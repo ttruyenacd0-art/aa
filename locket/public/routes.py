@@ -709,15 +709,15 @@ def auth_me():
     if not user:
         session.clear()
         return jsonify({"success": False, "logged_in": False})
-    # Chỉ lấy records có payment_id (đã thanh toán thực), không lấy records "giả" tạo bởi activate
-    purchases = conn.execute(
-        "SELECT locket_username, purchased_at FROM gold_purchases WHERE user_id=? AND payment_id IS NOT NULL ORDER BY purchased_at DESC",
+    # Chỉ lấy từ gold_activations (đã kích hoạt thực sự), không phải gold_purchases (chỉ thanh toán chưa kích hoạt)
+    activations = conn.execute(
+        "SELECT locket_username, activated_at FROM gold_activations WHERE user_id=? ORDER BY activated_at DESC",
         (user_id,)
     ).fetchall()
     items = [
         {"locket_username": r["locket_username"],
-         "purchased_at": r["purchased_at"]}
-        for r in purchases
+         "purchased_at": r["activated_at"]}
+        for r in activations
     ]
     return jsonify({
         "success": True,
@@ -836,13 +836,13 @@ def gold_reactivate():
     if not valid_purchase:
         return jsonify({"success": False, "msg": "Bạn chưa mua gói nào. Vui lòng mua gói trước khi kích hoạt lại."}), 403
 
-    # Kiểm tra user đã từng mua/kích hoạt locket_username này chưa (chỉ từ record có payment_id)
+    # Kiểm tra user đã từng kích hoạt locket_username này chưa (từ gold_activations)
     purchase = conn.execute(
-        "SELECT id FROM gold_purchases WHERE user_id=? AND locket_username=? AND payment_id IS NOT NULL LIMIT 1",
+        "SELECT id FROM gold_activations WHERE user_id=? AND locket_username=? LIMIT 1",
         (user_id, locket_username)
     ).fetchone()
     if not purchase:
-        return jsonify({"success": False, "msg": "Không tìm thấy lịch sử mua Gold cho username này"}), 403
+        return jsonify({"success": False, "msg": "Không tìm thấy lịch sử kích hoạt Gold cho username này"}), 403
 
     # Kiểm tra giới hạn kích hoạt của gói
     pkg_id = valid_purchase["package_id"]
