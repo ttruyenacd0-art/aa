@@ -1,0 +1,46 @@
+[Unit]
+Description=Locket Gold — Auto re-activate cron (single-shot via timer)
+After=network-online.target locket.service
+Wants=network-online.target
+
+# This is a oneshot — it runs `cron_reactivate.py` once and exits.
+# Use the matching `locket-reactivate.timer` to schedule it (every 10 min).
+# Alternative: see `deploy/CRON_REACTIVATE.md` for plain crontab usage.
+
+[Service]
+Type=oneshot
+User=locket
+Group=locket
+WorkingDirectory=/home/locket/LocketGoldUsername
+
+# Same env as the main service (DB path, account creds, proxy, etc.)
+EnvironmentFile=/home/locket/LocketGoldUsername/.env
+
+# By default: single-receipt mode (refresh latest username only). Pass --all
+# in production once you have multiple receipts on RevenueCat.
+ExecStart=/home/locket/LocketGoldUsername/.venv/bin/python \
+    /home/locket/LocketGoldUsername/cron_reactivate.py
+
+# Hardening — must be able to write the SQLite DB and reactivation_log.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/locket/LocketGoldUsername
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+
+# Logs go to journald — view with `journalctl -u locket-reactivate -f`.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=locket-reactivate
+
+# Don't restart on success (oneshot); the timer is what triggers next run.
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target
