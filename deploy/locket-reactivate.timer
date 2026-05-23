@@ -1,0 +1,15 @@
+[Unit]
+Description=Locket Gold — Run re-activate cron every 10 minutes
+Requires=locket-reactivate.service
+
+[Timer]
+# Match PHP crontab: 0,10,20,30,40,50 * * * *
+OnCalendar=*:0/10
+# Catch up if the system was off when the next tick was due
+Persistent=true
+# Don't start until 30s after boot to let DB / network settle
+OnBootSec=30s
+Unit=locket-reactivate.service
+
+[Install]
+WantedBy=timers.target
